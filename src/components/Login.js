@@ -108,7 +108,14 @@ export default function Login({ onLogin }) {
       if (authError) {
         setError(authError.message);
       } else if (data.session) {
-        onLogin(data.session);
+        // Check if user has admin role
+        const role = data.user?.user_metadata?.role;
+        if (role !== 'admin') {
+          await supabase.auth.signOut();
+          setError('Access denied. Admin accounts only.');
+        } else {
+          onLogin(data.session);
+        }
       }
     } catch {
       setError('Connection error. Please try again.');

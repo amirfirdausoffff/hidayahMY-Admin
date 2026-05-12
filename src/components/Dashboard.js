@@ -1,319 +1,323 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { db } from '../lib/firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
 
+const API_URL = 'https://api.hidayahmy.com';
+
 const styles = {
-  layout: {
-    display: 'flex',
-    minHeight: '100vh',
-  },
+  layout: { display: 'flex', minHeight: '100vh' },
   sidebar: {
-    width: '260px',
-    background: 'linear-gradient(180deg, #0D7377 0%, #095456 100%)',
-    color: '#fff',
-    padding: '24px 0',
-    display: 'flex',
-    flexDirection: 'column',
-    position: 'fixed',
-    height: '100vh',
-    overflowY: 'auto',
+    width: '260px', background: 'linear-gradient(180deg, #0D7377 0%, #095456 100%)',
+    color: '#fff', padding: '24px 0', display: 'flex', flexDirection: 'column',
+    position: 'fixed', height: '100vh', overflowY: 'auto',
   },
-  sidebarHeader: {
-    padding: '0 24px 24px',
-    borderBottom: '1px solid rgba(255,255,255,0.1)',
-    marginBottom: '16px',
-  },
-  sidebarLogo: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-  },
-  logoBox: {
-    width: '40px',
-    height: '40px',
-    borderRadius: '10px',
-    objectFit: 'contain',
-  },
-  logoText: {
-    fontSize: '18px',
-    fontWeight: '700',
-  },
+  sidebarHeader: { padding: '0 24px 24px', borderBottom: '1px solid rgba(255,255,255,0.1)', marginBottom: '16px' },
+  sidebarLogo: { display: 'flex', alignItems: 'center', gap: '12px' },
+  logoBox: { width: '40px', height: '40px', borderRadius: '10px', objectFit: 'contain' },
+  logoText: { fontSize: '18px', fontWeight: '700' },
   navItem: (active) => ({
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-    padding: '12px 24px',
-    cursor: 'pointer',
+    display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 24px', cursor: 'pointer',
     background: active ? 'rgba(255,255,255,0.15)' : 'transparent',
     borderLeft: active ? '3px solid #fff' : '3px solid transparent',
-    fontSize: '14px',
-    fontWeight: active ? '600' : '400',
-    transition: 'all 0.2s',
+    fontSize: '14px', fontWeight: active ? '600' : '400', transition: 'all 0.2s',
   }),
-  navIcon: {
-    fontSize: '18px',
-    width: '24px',
-    textAlign: 'center',
-  },
-  main: {
-    flex: 1,
-    marginLeft: '260px',
-    padding: '32px',
-  },
-  header: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: '32px',
-  },
-  pageTitle: {
-    fontSize: '28px',
-    fontWeight: '700',
-    color: '#1a1a2e',
-  },
+  navIcon: { fontSize: '18px', width: '24px', textAlign: 'center' },
+  main: { flex: 1, marginLeft: '260px', padding: '32px' },
+  header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' },
+  pageTitle: { fontSize: '28px', fontWeight: '700', color: '#1a1a2e' },
   logoutBtn: {
-    padding: '10px 20px',
-    background: '#fff',
-    border: '2px solid #e8e8e8',
-    borderRadius: '10px',
-    fontSize: '14px',
-    fontWeight: '500',
-    cursor: 'pointer',
-    color: '#666',
+    padding: '10px 20px', background: '#fff', border: '2px solid #e8e8e8',
+    borderRadius: '10px', fontSize: '14px', fontWeight: '500', cursor: 'pointer', color: '#666',
   },
-  statsGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-    gap: '20px',
-    marginBottom: '32px',
-  },
+  statsGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px', marginBottom: '32px' },
   statCard: (color) => ({
-    background: '#fff',
-    borderRadius: '14px',
-    padding: '24px',
-    boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
-    borderLeft: `4px solid ${color}`,
+    background: '#fff', borderRadius: '14px', padding: '24px',
+    boxShadow: '0 2px 12px rgba(0,0,0,0.06)', borderLeft: `4px solid ${color}`,
   }),
-  statLabel: {
-    fontSize: '13px',
-    color: '#888',
-    fontWeight: '500',
-    textTransform: 'uppercase',
-    letterSpacing: '0.5px',
-  },
-  statValue: {
-    fontSize: '32px',
-    fontWeight: '700',
-    color: '#1a1a2e',
-    margin: '8px 0 4px',
-  },
-  statChange: (positive) => ({
-    fontSize: '13px',
-    color: positive ? '#0D7377' : '#e74c3c',
-    fontWeight: '500',
-  }),
-  card: {
-    background: '#fff',
-    borderRadius: '14px',
-    padding: '24px',
-    boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
-    marginBottom: '24px',
-  },
-  cardTitle: {
-    fontSize: '18px',
-    fontWeight: '600',
-    color: '#1a1a2e',
-    marginBottom: '20px',
-  },
-  table: {
-    width: '100%',
-    borderCollapse: 'collapse',
-  },
+  statLabel: { fontSize: '13px', color: '#888', fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.5px' },
+  statValue: { fontSize: '32px', fontWeight: '700', color: '#1a1a2e', margin: '8px 0 4px' },
+  card: { background: '#fff', borderRadius: '14px', padding: '24px', boxShadow: '0 2px 12px rgba(0,0,0,0.06)', marginBottom: '24px' },
+  cardTitle: { fontSize: '18px', fontWeight: '600', color: '#1a1a2e', marginBottom: '20px' },
+  table: { width: '100%', borderCollapse: 'collapse' },
   th: {
-    textAlign: 'left',
-    padding: '12px 16px',
-    fontSize: '12px',
-    fontWeight: '600',
-    color: '#888',
-    textTransform: 'uppercase',
-    letterSpacing: '0.5px',
-    borderBottom: '2px solid #f0f0f0',
+    textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600',
+    color: '#888', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '2px solid #f0f0f0',
   },
-  td: {
-    padding: '14px 16px',
-    fontSize: '14px',
-    borderBottom: '1px solid #f5f5f5',
-    color: '#333',
-  },
+  td: { padding: '14px 16px', fontSize: '14px', borderBottom: '1px solid #f5f5f5', color: '#333' },
   badge: (type) => ({
-    padding: '4px 10px',
-    borderRadius: '20px',
-    fontSize: '12px',
-    fontWeight: '600',
-    background: type === 'active' ? '#e6f7f7' : type === 'pending' ? '#fff3e0' : '#fce4ec',
-    color: type === 'active' ? '#0D7377' : type === 'pending' ? '#e65100' : '#c62828',
+    padding: '4px 10px', borderRadius: '20px', fontSize: '12px', fontWeight: '600',
+    background: type === 'admin' ? '#e6f7f7' : type === 'customer' ? '#e8f5e9' : '#fce4ec',
+    color: type === 'admin' ? '#0D7377' : type === 'customer' ? '#2e7d32' : '#c62828',
   }),
-  emptyState: {
-    textAlign: 'center',
-    padding: '60px 20px',
-    color: '#999',
+  input: {
+    padding: '12px 16px', border: '2px solid #e8e8e8', borderRadius: '10px',
+    fontSize: '15px', outline: 'none', width: '100%', boxSizing: 'border-box',
   },
-  emptyIcon: {
-    fontSize: '48px',
-    marginBottom: '16px',
+  btnPrimary: {
+    padding: '12px 24px', background: 'linear-gradient(135deg, #0D7377, #14919B)',
+    color: '#fff', border: 'none', borderRadius: '10px', fontSize: '14px',
+    fontWeight: '600', cursor: 'pointer',
   },
-  settingsForm: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '20px',
-    maxWidth: '500px',
-  },
-  settingsGroup: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '6px',
-  },
-  settingsLabel: {
-    fontSize: '14px',
-    fontWeight: '600',
-    color: '#333',
-  },
-  settingsInput: {
-    padding: '12px 16px',
-    border: '2px solid #e8e8e8',
-    borderRadius: '10px',
-    fontSize: '14px',
-    outline: 'none',
-  },
-  settingsBtn: {
-    padding: '12px 24px',
-    background: 'linear-gradient(135deg, #0D7377, #14919B)',
-    color: '#fff',
-    border: 'none',
-    borderRadius: '10px',
-    fontSize: '14px',
-    fontWeight: '600',
-    cursor: 'pointer',
-    alignSelf: 'flex-start',
+  btnDanger: {
+    padding: '6px 14px', background: '#fee', color: '#c00', border: '1px solid #fcc',
+    borderRadius: '8px', fontSize: '12px', fontWeight: '600', cursor: 'pointer',
   },
 };
 
 const navItems = [
   { id: 'dashboard', label: 'Dashboard', icon: '~' },
-  { id: 'users', label: 'Users', icon: '>' },
+  { id: 'customers', label: 'Customers', icon: '>' },
+  { id: 'team', label: 'Team', icon: '+' },
   { id: 'content', label: 'Content', icon: '#' },
   { id: 'notifications', label: 'Notifications', icon: '!' },
   { id: 'analytics', label: 'Analytics', icon: '%' },
   { id: 'settings', label: 'Settings', icon: '*' },
 ];
 
-function DashboardPage() {
-  const [stats, setStats] = useState(null);
+// ─── Helper: fetch from API with auth ───
+async function apiFetch(path, session, options = {}) {
+  const res = await fetch(`${API_URL}${path}`, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${session.access_token}`,
+      ...options.headers,
+    },
+  });
+  return res.json();
+}
+
+// ─── Dashboard Page ───
+function DashboardPage({ session }) {
+  const [firebaseStats, setFirebaseStats] = useState(null);
+  const [apiStats, setApiStats] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const statsRef = doc(db, 'app_stats', 'dashboard');
-
-    // Read-only: listen for real-time updates from Firebase
     const unsubscribe = onSnapshot(statsRef, (snap) => {
-      if (snap.exists()) {
-        setStats(snap.data());
-      }
+      if (snap.exists()) setFirebaseStats(snap.data());
       setLoading(false);
     });
-
     return () => unsubscribe();
   }, []);
 
-  const formatNumber = (num) => {
-    return (num || 0).toLocaleString();
-  };
+  useEffect(() => {
+    apiFetch('/api/admin/stats', session).then(setApiStats).catch(() => {});
+  }, [session]);
 
-  const displayStats = [
-    { label: 'Total Users', value: formatNumber(stats?.totalUsers), color: '#0D7377' },
-    { label: 'Active Today', value: formatNumber(stats?.activeToday), color: '#14919B' },
-    { label: 'Downloads', value: formatNumber(stats?.downloads), color: '#2ecc71' },
-    { label: 'Feedback', value: formatNumber(stats?.feedback), color: '#e67e22' },
-  ];
+  const fmt = (n) => (n || 0).toLocaleString();
 
-  if (loading) {
-    return <div style={{ textAlign: 'center', padding: '40px', color: '#888' }}>Loading stats from Firebase...</div>;
-  }
+  if (loading) return <div style={{ textAlign: 'center', padding: '40px', color: '#888' }}>Loading...</div>;
 
   return (
     <>
       <div style={styles.statsGrid}>
-        {displayStats.map((stat) => (
-          <div key={stat.label} style={styles.statCard(stat.color)}>
-            <div style={styles.statLabel}>{stat.label}</div>
-            <div style={styles.statValue}>{stat.value}</div>
-          </div>
-        ))}
+        <div style={styles.statCard('#0D7377')}>
+          <div style={styles.statLabel}>Customers (App Users)</div>
+          <div style={styles.statValue}>{fmt(apiStats?.totalCustomers)}</div>
+        </div>
+        <div style={styles.statCard('#14919B')}>
+          <div style={styles.statLabel}>Admin Team</div>
+          <div style={styles.statValue}>{fmt(apiStats?.totalAdmins)}</div>
+        </div>
+        <div style={styles.statCard('#2ecc71')}>
+          <div style={styles.statLabel}>Downloads</div>
+          <div style={styles.statValue}>{fmt(firebaseStats?.downloads)}</div>
+        </div>
+        <div style={styles.statCard('#e67e22')}>
+          <div style={styles.statLabel}>Feedback</div>
+          <div style={styles.statValue}>{fmt(firebaseStats?.feedback)}</div>
+        </div>
       </div>
 
       <div style={styles.card}>
         <div style={styles.cardTitle}>Firebase Connection</div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-          <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: stats ? '#2ecc71' : '#e74c3c' }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: firebaseStats ? '#2ecc71' : '#e74c3c' }} />
           <span style={{ fontSize: '14px', color: '#333' }}>
-            {stats ? 'Connected to Firebase (hidayah-my)' : 'Not connected'}
+            {firebaseStats ? 'Connected to Firebase (hidayah-my)' : 'Not connected'}
           </span>
         </div>
-        {stats?.updatedAt && (
-          <p style={{ fontSize: '13px', color: '#888' }}>
-            Last updated: {new Date(stats.updatedAt).toLocaleString()}
-          </p>
-        )}
-        <p style={{ fontSize: '13px', color: '#888', marginTop: '8px' }}>
-          Stats update in real-time from Firestore collection: <code>app_stats/dashboard</code>
-        </p>
       </div>
     </>
   );
 }
 
-function UsersPage() {
-  const users = [
-    { name: 'Ahmad Rizal', email: 'ahmad@email.com', plan: 'Premium', date: '2026-03-15', status: 'active' },
-    { name: 'Siti Nurhaliza', email: 'siti@email.com', plan: 'Free', date: '2026-04-02', status: 'active' },
-    { name: 'Muhammad Faiz', email: 'faiz@email.com', plan: 'Free', date: '2026-05-11', status: 'pending' },
-    { name: 'Aisyah Rahman', email: 'aisyah@email.com', plan: 'Premium', date: '2026-01-20', status: 'active' },
-    { name: 'Haziq Ismail', email: 'haziq@email.com', plan: 'Free', date: '2026-05-10', status: 'active' },
-    { name: 'Nurul Ain', email: 'nurul@email.com', plan: 'Premium', date: '2026-02-14', status: 'active' },
-    { name: 'Irfan Hakimi', email: 'irfan@email.com', plan: 'Free', date: '2026-05-08', status: 'inactive' },
-  ];
+// ─── Customers Page (app users) ───
+function CustomersPage({ session }) {
+  const [customers, setCustomers] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    apiFetch('/api/admin/list-users?role=customer', session)
+      .then((data) => { setCustomers(data.users || []); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, [session]);
+
+  if (loading) return <div style={{ textAlign: 'center', padding: '40px', color: '#888' }}>Loading customers...</div>;
 
   return (
     <div style={styles.card}>
-      <div style={styles.cardTitle}>All Users</div>
-      <table style={styles.table}>
-        <thead>
-          <tr>
-            <th style={styles.th}>Name</th>
-            <th style={styles.th}>Email</th>
-            <th style={styles.th}>Plan</th>
-            <th style={styles.th}>Joined</th>
-            <th style={styles.th}>Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {users.map((user) => (
-            <tr key={user.email}>
-              <td style={styles.td}>{user.name}</td>
-              <td style={styles.td}>{user.email}</td>
-              <td style={styles.td}>{user.plan}</td>
-              <td style={styles.td}>{user.date}</td>
-              <td style={styles.td}>
-                <span style={styles.badge(user.status)}>{user.status}</span>
-              </td>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+        <div style={styles.cardTitle}>App Customers</div>
+        <span style={{ fontSize: '14px', color: '#888' }}>{customers.length} total</span>
+      </div>
+      {customers.length === 0 ? (
+        <p style={{ textAlign: 'center', color: '#999', padding: '40px' }}>No customers yet</p>
+      ) : (
+        <table style={styles.table}>
+          <thead>
+            <tr>
+              <th style={styles.th}>Name</th>
+              <th style={styles.th}>Email</th>
+              <th style={styles.th}>Provider</th>
+              <th style={styles.th}>Joined</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {customers.map((u) => (
+              <tr key={u.id}>
+                <td style={styles.td}>{u.name || '-'}</td>
+                <td style={styles.td}>{u.email}</td>
+                <td style={styles.td}><span style={styles.badge('customer')}>{u.provider || 'email'}</span></td>
+                <td style={styles.td}>{new Date(u.created_at).toLocaleDateString()}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
     </div>
   );
 }
 
+// ─── Team Page (admin users) ───
+function TeamPage({ session }) {
+  const [admins, setAdmins] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [formData, setFormData] = useState({ name: '', email: '', password: '' });
+  const [formError, setFormError] = useState('');
+  const [formSuccess, setFormSuccess] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const loadAdmins = useCallback(() => {
+    apiFetch('/api/admin/list-users?role=admin', session)
+      .then((data) => { setAdmins(data.users || []); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, [session]);
+
+  useEffect(() => { loadAdmins(); }, [loadAdmins]);
+
+  const handleAddAdmin = async (e) => {
+    e.preventDefault();
+    setFormError(''); setFormSuccess(''); setSubmitting(true);
+
+    const data = await apiFetch('/api/admin/add-user', session, {
+      method: 'POST',
+      body: JSON.stringify(formData),
+    });
+
+    if (data.success) {
+      setFormSuccess(`Admin "${formData.name || formData.email}" added successfully`);
+      setFormData({ name: '', email: '', password: '' });
+      setShowForm(false);
+      loadAdmins();
+    } else {
+      setFormError(data.error || 'Failed to add admin');
+    }
+    setSubmitting(false);
+  };
+
+  const handleRemove = async (user) => {
+    if (!confirm(`Remove admin ${user.email}?`)) return;
+    const data = await apiFetch('/api/admin/remove-user', session, {
+      method: 'DELETE',
+      body: JSON.stringify({ user_id: user.id }),
+    });
+    if (data.success) loadAdmins();
+    else alert(data.error || 'Failed to remove');
+  };
+
+  if (loading) return <div style={{ textAlign: 'center', padding: '40px', color: '#888' }}>Loading team...</div>;
+
+  return (
+    <>
+      {formSuccess && (
+        <div style={{ background: '#e8f5e9', color: '#2e7d32', padding: '12px 16px', borderRadius: '10px', marginBottom: '16px', fontSize: '14px' }}>
+          {formSuccess}
+        </div>
+      )}
+
+      <div style={styles.card}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+          <div style={styles.cardTitle}>Admin Team</div>
+          <button style={styles.btnPrimary} onClick={() => { setShowForm(!showForm); setFormError(''); }}>
+            {showForm ? 'Cancel' : '+ Add Admin'}
+          </button>
+        </div>
+
+        {showForm && (
+          <form onSubmit={handleAddAdmin} style={{ marginBottom: '24px', padding: '20px', background: '#f9fafb', borderRadius: '12px' }}>
+            {formError && <div style={{ background: '#fee', color: '#c00', padding: '10px', borderRadius: '8px', marginBottom: '12px', fontSize: '13px' }}>{formError}</div>}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+              <input
+                style={styles.input} placeholder="Name" value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              />
+              <input
+                style={styles.input} placeholder="Email" type="email" required value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              />
+              <input
+                style={styles.input} placeholder="Password" type="password" required minLength={6} value={formData.password}
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+              />
+            </div>
+            <button type="submit" style={{ ...styles.btnPrimary, opacity: submitting ? 0.7 : 1 }} disabled={submitting}>
+              {submitting ? 'Adding...' : 'Add Admin User'}
+            </button>
+          </form>
+        )}
+
+        {admins.length === 0 ? (
+          <p style={{ textAlign: 'center', color: '#999', padding: '40px' }}>No admin users yet</p>
+        ) : (
+          <table style={styles.table}>
+            <thead>
+              <tr>
+                <th style={styles.th}>Name</th>
+                <th style={styles.th}>Email</th>
+                <th style={styles.th}>Role</th>
+                <th style={styles.th}>Added</th>
+                <th style={styles.th}>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {admins.map((u) => (
+                <tr key={u.id}>
+                  <td style={styles.td}>{u.name || '-'}</td>
+                  <td style={styles.td}>{u.email}</td>
+                  <td style={styles.td}><span style={styles.badge('admin')}>Admin</span></td>
+                  <td style={styles.td}>{new Date(u.created_at).toLocaleDateString()}</td>
+                  <td style={styles.td}>
+                    {u.email !== session?.user?.email ? (
+                      <button style={styles.btnDanger} onClick={() => handleRemove(u)}>Remove</button>
+                    ) : (
+                      <span style={{ fontSize: '12px', color: '#888' }}>You</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </>
+  );
+}
+
+// ─── Content Page ───
 function ContentPage() {
   const content = [
     { title: 'Prayer Times Update - Ramadan 2026', type: 'Announcement', date: '2026-05-01', status: 'active' },
@@ -321,28 +325,16 @@ function ContentPage() {
     { title: 'Zakat Calculator v2.0', type: 'Feature', date: '2026-04-15', status: 'active' },
     { title: 'App Maintenance Notice', type: 'Announcement', date: '2026-03-20', status: 'inactive' },
   ];
-
   return (
     <div style={styles.card}>
       <div style={styles.cardTitle}>Content Management</div>
       <table style={styles.table}>
-        <thead>
-          <tr>
-            <th style={styles.th}>Title</th>
-            <th style={styles.th}>Type</th>
-            <th style={styles.th}>Date</th>
-            <th style={styles.th}>Status</th>
-          </tr>
-        </thead>
+        <thead><tr><th style={styles.th}>Title</th><th style={styles.th}>Type</th><th style={styles.th}>Date</th><th style={styles.th}>Status</th></tr></thead>
         <tbody>
           {content.map((item) => (
             <tr key={item.title}>
-              <td style={styles.td}>{item.title}</td>
-              <td style={styles.td}>{item.type}</td>
-              <td style={styles.td}>{item.date}</td>
-              <td style={styles.td}>
-                <span style={styles.badge(item.status)}>{item.status}</span>
-              </td>
+              <td style={styles.td}>{item.title}</td><td style={styles.td}>{item.type}</td>
+              <td style={styles.td}>{item.date}</td><td style={styles.td}><span style={styles.badge(item.status)}>{item.status}</span></td>
             </tr>
           ))}
         </tbody>
@@ -355,8 +347,7 @@ function NotificationsPage() {
   return (
     <div style={styles.card}>
       <div style={styles.cardTitle}>Push Notifications</div>
-      <div style={styles.emptyState}>
-        <div style={styles.emptyIcon}>!</div>
+      <div style={{ textAlign: 'center', padding: '60px 20px', color: '#999' }}>
         <p style={{ fontSize: '16px', fontWeight: '500', marginBottom: '8px' }}>No notifications sent yet</p>
         <p style={{ fontSize: '14px' }}>Send push notifications to your app users from here.</p>
       </div>
@@ -365,13 +356,6 @@ function NotificationsPage() {
 }
 
 function AnalyticsPage() {
-  const metrics = [
-    { label: 'Page Views (Today)', value: '8,432' },
-    { label: 'Avg. Session Duration', value: '4m 32s' },
-    { label: 'Bounce Rate', value: '24.3%' },
-    { label: 'Top Feature', value: 'Prayer Times' },
-  ];
-
   const topFeatures = [
     { feature: 'Prayer Times', usage: '89%', sessions: '11,087' },
     { feature: 'Al-Quran', usage: '72%', sessions: '8,965' },
@@ -379,40 +363,18 @@ function AnalyticsPage() {
     { feature: 'Daily Azkar', usage: '48%', sessions: '5,980' },
     { feature: 'Zakat Calculator', usage: '31%', sessions: '3,862' },
   ];
-
   return (
-    <>
-      <div style={styles.statsGrid}>
-        {metrics.map((m) => (
-          <div key={m.label} style={styles.statCard('#0D7377')}>
-            <div style={styles.statLabel}>{m.label}</div>
-            <div style={{ ...styles.statValue, fontSize: '24px' }}>{m.value}</div>
-          </div>
-        ))}
-      </div>
-
-      <div style={styles.card}>
-        <div style={styles.cardTitle}>Top Features by Usage</div>
-        <table style={styles.table}>
-          <thead>
-            <tr>
-              <th style={styles.th}>Feature</th>
-              <th style={styles.th}>Usage Rate</th>
-              <th style={styles.th}>Sessions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {topFeatures.map((f) => (
-              <tr key={f.feature}>
-                <td style={styles.td}>{f.feature}</td>
-                <td style={styles.td}>{f.usage}</td>
-                <td style={styles.td}>{f.sessions}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </>
+    <div style={styles.card}>
+      <div style={styles.cardTitle}>Top Features by Usage</div>
+      <table style={styles.table}>
+        <thead><tr><th style={styles.th}>Feature</th><th style={styles.th}>Usage Rate</th><th style={styles.th}>Sessions</th></tr></thead>
+        <tbody>
+          {topFeatures.map((f) => (
+            <tr key={f.feature}><td style={styles.td}>{f.feature}</td><td style={styles.td}>{f.usage}</td><td style={styles.td}>{f.sessions}</td></tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 
@@ -420,32 +382,24 @@ function SettingsPage() {
   return (
     <div style={styles.card}>
       <div style={styles.cardTitle}>App Settings</div>
-      <div style={styles.settingsForm}>
-        <div style={styles.settingsGroup}>
-          <label style={styles.settingsLabel}>App Name</label>
-          <input style={styles.settingsInput} defaultValue="HidayahMY" />
-        </div>
-        <div style={styles.settingsGroup}>
-          <label style={styles.settingsLabel}>Support Email</label>
-          <input style={styles.settingsInput} defaultValue="support@hidayahmy.com" />
-        </div>
-        <div style={styles.settingsGroup}>
-          <label style={styles.settingsLabel}>Default Language</label>
-          <input style={styles.settingsInput} defaultValue="Bahasa Malaysia" />
-        </div>
-        <div style={styles.settingsGroup}>
-          <label style={styles.settingsLabel}>Prayer Time Source</label>
-          <input style={styles.settingsInput} defaultValue="JAKIM" />
-        </div>
-        <button style={styles.settingsBtn}>Save Changes</button>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', maxWidth: '500px' }}>
+        {[['App Name', 'HidayahMY'], ['Support Email', 'support@hidayahmy.com'], ['Default Language', 'Bahasa Malaysia'], ['Prayer Time Source', 'JAKIM']].map(([label, val]) => (
+          <div key={label} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <label style={{ fontSize: '14px', fontWeight: '600', color: '#333' }}>{label}</label>
+            <input style={styles.input} defaultValue={val} />
+          </div>
+        ))}
+        <button style={{ ...styles.btnPrimary, alignSelf: 'flex-start' }}>Save Changes</button>
       </div>
     </div>
   );
 }
 
+// ─── Main Dashboard Layout ───
 const pages = {
   dashboard: DashboardPage,
-  users: UsersPage,
+  customers: CustomersPage,
+  team: TeamPage,
   content: ContentPage,
   notifications: NotificationsPage,
   analytics: AnalyticsPage,
@@ -468,11 +422,7 @@ export default function Dashboard({ onLogout, session }) {
         </div>
         <nav>
           {navItems.map((item) => (
-            <div
-              key={item.id}
-              style={styles.navItem(activePage === item.id)}
-              onClick={() => setActivePage(item.id)}
-            >
+            <div key={item.id} style={styles.navItem(activePage === item.id)} onClick={() => setActivePage(item.id)}>
               <span style={styles.navIcon}>{item.icon}</span>
               <span>{item.label}</span>
             </div>
@@ -482,18 +432,10 @@ export default function Dashboard({ onLogout, session }) {
           <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)', marginBottom: '12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {userEmail}
           </div>
-          <div
-            onClick={onLogout}
-            style={{
-              padding: '10px 16px',
-              background: 'rgba(255,255,255,0.1)',
-              borderRadius: '10px',
-              textAlign: 'center',
-              cursor: 'pointer',
-              fontSize: '14px',
-              fontWeight: '500',
-            }}
-          >
+          <div onClick={onLogout} style={{
+            padding: '10px 16px', background: 'rgba(255,255,255,0.1)', borderRadius: '10px',
+            textAlign: 'center', cursor: 'pointer', fontSize: '14px', fontWeight: '500',
+          }}>
             Sign Out
           </div>
         </div>
@@ -501,14 +443,10 @@ export default function Dashboard({ onLogout, session }) {
 
       <main style={styles.main}>
         <div style={styles.header}>
-          <h1 style={styles.pageTitle}>
-            {navItems.find((n) => n.id === activePage)?.label}
-          </h1>
-          <button style={styles.logoutBtn} onClick={onLogout}>
-            Sign Out
-          </button>
+          <h1 style={styles.pageTitle}>{navItems.find((n) => n.id === activePage)?.label}</h1>
+          <button style={styles.logoutBtn} onClick={onLogout}>Sign Out</button>
         </div>
-        <PageComponent />
+        <PageComponent session={session} />
       </main>
     </div>
   );
