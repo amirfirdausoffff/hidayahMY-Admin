@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { db } from '../lib/firebase';
-import { doc, onSnapshot, setDoc, getDoc } from 'firebase/firestore';
+import { doc, onSnapshot } from 'firebase/firestore';
 
 const styles = {
   layout: {
@@ -214,20 +214,7 @@ function DashboardPage() {
   useEffect(() => {
     const statsRef = doc(db, 'app_stats', 'dashboard');
 
-    // Seed initial data if document doesn't exist
-    getDoc(statsRef).then((snap) => {
-      if (!snap.exists()) {
-        setDoc(statsRef, {
-          totalUsers: 0,
-          activeToday: 0,
-          downloads: 0,
-          feedback: 0,
-          updatedAt: new Date().toISOString(),
-        });
-      }
-    });
-
-    // Listen for real-time updates
+    // Read-only: listen for real-time updates from Firebase
     const unsubscribe = onSnapshot(statsRef, (snap) => {
       if (snap.exists()) {
         setStats(snap.data());
