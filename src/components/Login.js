@@ -24,14 +24,9 @@ const styles = {
   logoIcon: {
     width: '60px',
     height: '60px',
-    background: 'linear-gradient(135deg, #0D7377, #14919B)',
     borderRadius: '16px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
     margin: '0 auto 16px',
-    fontSize: '28px',
-    color: '#fff',
+    objectFit: 'contain',
   },
   title: {
     fontSize: '24px',
@@ -127,7 +122,7 @@ export default function Login({ onLogin }) {
     <div style={styles.container}>
       <div style={styles.card}>
         <div style={styles.logo}>
-          <div style={styles.logoIcon}>H</div>
+          <img src="/hidayahicon.png" alt="HidayahMY" style={styles.logoIcon} />
           <h1 style={styles.title}>HidayahMY</h1>
           <p style={styles.subtitle}>Admin Panel</p>
         </div>

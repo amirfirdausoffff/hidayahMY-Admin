@@ -29,13 +29,8 @@ const styles = {
   logoBox: {
     width: '40px',
     height: '40px',
-    background: 'rgba(255,255,255,0.2)',
     borderRadius: '10px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontSize: '20px',
-    fontWeight: '700',
+    objectFit: 'contain',
   },
   logoText: {
     fontSize: '18px',
@@ -456,7 +451,7 @@ export default function Dashboard({ onLogout }) {
       <aside style={styles.sidebar}>
         <div style={styles.sidebarHeader}>
           <div style={styles.sidebarLogo}>
-            <div style={styles.logoBox}>H</div>
+            <img src="/hidayahicon.png" alt="HidayahMY" style={styles.logoBox} />
             <span style={styles.logoText}>HidayahMY</span>
           </div>
         </div>
