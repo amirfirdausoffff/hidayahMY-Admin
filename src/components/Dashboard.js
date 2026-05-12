@@ -442,7 +442,8 @@ const pages = {
   settings: SettingsPage,
 };
 
-export default function Dashboard({ onLogout }) {
+export default function Dashboard({ onLogout, session }) {
+  const userEmail = session?.user?.email || 'Admin';
   const [activePage, setActivePage] = useState('dashboard');
   const PageComponent = pages[activePage];
 
@@ -468,6 +469,9 @@ export default function Dashboard({ onLogout }) {
           ))}
         </nav>
         <div style={{ marginTop: 'auto', padding: '24px' }}>
+          <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)', marginBottom: '12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {userEmail}
+          </div>
           <div
             onClick={onLogout}
             style={{

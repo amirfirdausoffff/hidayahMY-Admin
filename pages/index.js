@@ -1,27 +1,32 @@
 import { useState, useEffect } from 'react';
+import { supabase } from '../src/lib/supabase';
 import Login from '../src/components/Login';
 import Dashboard from '../src/components/Dashboard';
 
 export default function Home() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('hidayahmy_token');
-    if (token) {
-      setIsLoggedIn(true);
-    }
-    setLoading(false);
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setLoading(false);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  const handleLogin = (token) => {
-    localStorage.setItem('hidayahmy_token', token);
-    setIsLoggedIn(true);
+  const handleLogin = (session) => {
+    setSession(session);
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('hidayahmy_token');
-    setIsLoggedIn(false);
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setSession(null);
   };
 
   if (loading) {
@@ -32,9 +37,9 @@ export default function Home() {
     );
   }
 
-  if (!isLoggedIn) {
+  if (!session) {
     return <Login onLogin={handleLogin} />;
   }
 
-  return <Dashboard onLogout={handleLogout} />;
+  return <Dashboard onLogout={handleLogout} session={session} />;
 }

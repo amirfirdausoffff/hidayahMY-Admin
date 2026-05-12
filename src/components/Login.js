@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { supabase } from '../lib/supabase';
 
 const styles = {
   container: {
@@ -87,7 +88,7 @@ const styles = {
 };
 
 export default function Login({ onLogin }) {
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -98,18 +99,15 @@ export default function Login({ onLogin }) {
     setLoading(true);
 
     try {
-      const res = await fetch('/api/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
+      const { data, error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
       });
 
-      const data = await res.json();
-
-      if (data.success) {
-        onLogin(data.token);
-      } else {
-        setError('Invalid username or password');
+      if (authError) {
+        setError(authError.message);
+      } else if (data.session) {
+        onLogin(data.session);
       }
     } catch {
       setError('Connection error. Please try again.');
@@ -131,12 +129,12 @@ export default function Login({ onLogin }) {
           {error && <div style={styles.error}>{error}</div>}
 
           <div style={styles.inputGroup}>
-            <label style={styles.label}>Username</label>
+            <label style={styles.label}>Email</label>
             <input
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              placeholder="Enter username"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Enter email"
               style={styles.input}
               required
             />
