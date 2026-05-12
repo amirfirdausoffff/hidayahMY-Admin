@@ -1,4 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { db } from '../lib/firebase';
+import { doc, onSnapshot, setDoc, getDoc } from 'firebase/firestore';
 
 const styles = {
   layout: {
@@ -206,57 +208,78 @@ const navItems = [
 ];
 
 function DashboardPage() {
-  const stats = [
-    { label: 'Total Users', value: '12,458', change: '+12.5%', positive: true, color: '#0D7377' },
-    { label: 'Active Today', value: '1,847', change: '+8.2%', positive: true, color: '#14919B' },
-    { label: 'Downloads', value: '45,230', change: '+24.1%', positive: true, color: '#2ecc71' },
-    { label: 'Feedback', value: '89', change: '+3 new', positive: true, color: '#e67e22' },
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const statsRef = doc(db, 'app_stats', 'dashboard');
+
+    // Seed initial data if document doesn't exist
+    getDoc(statsRef).then((snap) => {
+      if (!snap.exists()) {
+        setDoc(statsRef, {
+          totalUsers: 0,
+          activeToday: 0,
+          downloads: 0,
+          feedback: 0,
+          updatedAt: new Date().toISOString(),
+        });
+      }
+    });
+
+    // Listen for real-time updates
+    const unsubscribe = onSnapshot(statsRef, (snap) => {
+      if (snap.exists()) {
+        setStats(snap.data());
+      }
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const formatNumber = (num) => {
+    return (num || 0).toLocaleString();
+  };
+
+  const displayStats = [
+    { label: 'Total Users', value: formatNumber(stats?.totalUsers), color: '#0D7377' },
+    { label: 'Active Today', value: formatNumber(stats?.activeToday), color: '#14919B' },
+    { label: 'Downloads', value: formatNumber(stats?.downloads), color: '#2ecc71' },
+    { label: 'Feedback', value: formatNumber(stats?.feedback), color: '#e67e22' },
   ];
 
-  const recentUsers = [
-    { name: 'Ahmad Rizal', email: 'ahmad@email.com', date: '2026-05-12', status: 'active' },
-    { name: 'Siti Nurhaliza', email: 'siti@email.com', date: '2026-05-11', status: 'active' },
-    { name: 'Muhammad Faiz', email: 'faiz@email.com', date: '2026-05-11', status: 'pending' },
-    { name: 'Aisyah Rahman', email: 'aisyah@email.com', date: '2026-05-10', status: 'active' },
-    { name: 'Haziq Ismail', email: 'haziq@email.com', date: '2026-05-10', status: 'active' },
-  ];
+  if (loading) {
+    return <div style={{ textAlign: 'center', padding: '40px', color: '#888' }}>Loading stats from Firebase...</div>;
+  }
 
   return (
     <>
       <div style={styles.statsGrid}>
-        {stats.map((stat) => (
+        {displayStats.map((stat) => (
           <div key={stat.label} style={styles.statCard(stat.color)}>
             <div style={styles.statLabel}>{stat.label}</div>
             <div style={styles.statValue}>{stat.value}</div>
-            <div style={styles.statChange(stat.positive)}>{stat.change}</div>
           </div>
         ))}
       </div>
 
       <div style={styles.card}>
-        <div style={styles.cardTitle}>Recent Users</div>
-        <table style={styles.table}>
-          <thead>
-            <tr>
-              <th style={styles.th}>Name</th>
-              <th style={styles.th}>Email</th>
-              <th style={styles.th}>Joined</th>
-              <th style={styles.th}>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {recentUsers.map((user) => (
-              <tr key={user.email}>
-                <td style={styles.td}>{user.name}</td>
-                <td style={styles.td}>{user.email}</td>
-                <td style={styles.td}>{user.date}</td>
-                <td style={styles.td}>
-                  <span style={styles.badge(user.status)}>{user.status}</span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div style={styles.cardTitle}>Firebase Connection</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+          <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: stats ? '#2ecc71' : '#e74c3c' }} />
+          <span style={{ fontSize: '14px', color: '#333' }}>
+            {stats ? 'Connected to Firebase (hidayah-my)' : 'Not connected'}
+          </span>
+        </div>
+        {stats?.updatedAt && (
+          <p style={{ fontSize: '13px', color: '#888' }}>
+            Last updated: {new Date(stats.updatedAt).toLocaleString()}
+          </p>
+        )}
+        <p style={{ fontSize: '13px', color: '#888', marginTop: '8px' }}>
+          Stats update in real-time from Firestore collection: <code>app_stats/dashboard</code>
+        </p>
       </div>
     </>
   );
