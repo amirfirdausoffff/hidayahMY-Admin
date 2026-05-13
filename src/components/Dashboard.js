@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { db } from '../lib/firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
+import { supabase } from '../lib/supabase';
 
 const API_URL = 'https://api.hidayahmy.com';
 
@@ -203,7 +204,7 @@ function BackgroundsPage({ session }) {
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState('');
   const [category, setCategory] = useState('dashboard');
-  const [imageData, setImageData] = useState(null);
+  const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
@@ -223,26 +224,43 @@ function BackgroundsPage({ session }) {
     const file = e.target.files[0];
     if (!file) return;
     if (file.size > 5 * 1024 * 1024) { setError('Image must be under 5MB'); return; }
-    const reader = new FileReader();
-    reader.onload = () => { setImageData(reader.result); setImagePreview(reader.result); };
-    reader.readAsDataURL(file);
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
   };
 
   const handleUpload = async (e) => {
     e.preventDefault();
-    if (!name.trim() || !imageData) { setError('Name and image are required'); return; }
+    if (!name.trim() || !imageFile) { setError('Name and image are required'); return; }
     setUploading(true); setError(''); setSuccess('');
 
-    const d = await apiFetch('/api/backgrounds', session, {
-      method: 'POST',
-      body: JSON.stringify({ name: name.trim(), category, image: imageData }),
-    });
+    try {
+      // Upload directly to Supabase Storage
+      const ext = imageFile.name.split('.').pop();
+      const fileName = `${category}/${Date.now()}_${name.trim().replace(/\s+/g, '_').toLowerCase()}.${ext}`;
 
-    if (d.success) {
-      setSuccess(`"${name}" uploaded`);
-      setName(''); setImageData(null); setImagePreview(null); setShowForm(false);
-      loadBackgrounds();
-    } else setError(d.error || 'Upload failed');
+      const { error: uploadError } = await supabase.storage
+        .from('backgrounds')
+        .upload(fileName, imageFile, { contentType: imageFile.type, upsert: false });
+
+      if (uploadError) { setError(uploadError.message); setUploading(false); return; }
+
+      // Get public URL
+      const { data: urlData } = supabase.storage.from('backgrounds').getPublicUrl(fileName);
+
+      // Save metadata via API
+      const d = await apiFetch('/api/backgrounds', session, {
+        method: 'POST',
+        body: JSON.stringify({ name: name.trim(), category, image_url: urlData.publicUrl, storage_path: fileName }),
+      });
+
+      if (d.success) {
+        setSuccess(`"${name}" uploaded`);
+        setName(''); setImageFile(null); setImagePreview(null); setShowForm(false);
+        loadBackgrounds();
+      } else setError(d.error || 'Save failed');
+    } catch (err) {
+      setError(err.message || 'Upload failed');
+    }
     setUploading(false);
   };
 
