@@ -347,6 +347,11 @@ function NotificationsPage({ session }) {
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [topic, setTopic] = useState('general');
+  const [sendMode, setSendMode] = useState('all'); // 'all' or 'user'
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [searching, setSearching] = useState(false);
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
@@ -371,25 +376,59 @@ function NotificationsPage({ session }) {
 
   useEffect(() => { loadHistory(); }, [loadHistory]);
 
+  const handleSearch = async (query) => {
+    setSearchQuery(query);
+    if (query.trim().length < 2) {
+      setSearchResults([]);
+      return;
+    }
+    setSearching(true);
+    const data = await apiFetch('/api/admin/list-users?role=customer', session);
+    const users = (data.users || []).filter((u) => {
+      const name = (u.name || '').toLowerCase();
+      const email = (u.email || '').toLowerCase();
+      const q = query.toLowerCase();
+      return name.includes(q) || email.includes(q);
+    });
+    setSearchResults(users.slice(0, 8));
+    setSearching(false);
+  };
+
   const handleSend = async (e) => {
     e.preventDefault();
     if (!title.trim() || !body.trim()) return;
-    const topicLabel = topics.find((t) => t.value === topic)?.label || topic;
-    if (!confirm(`Send notification to topic "${topicLabel}"?\n\nTitle: ${title}\nBody: ${body}`)) return;
+
+    if (sendMode === 'user' && !selectedUser) {
+      setError('Please select a user to send to');
+      return;
+    }
+
+    const target = sendMode === 'user'
+      ? `user "${selectedUser.name || selectedUser.email}"`
+      : `all users (topic: ${topics.find((t) => t.value === topic)?.label})`;
+    if (!confirm(`Send notification to ${target}?\n\nTitle: ${title}\nBody: ${body}`)) return;
 
     setSending(true);
     setResult(null);
     setError('');
 
+    const payload = { title: title.trim(), body: body.trim(), topic };
+    if (sendMode === 'user') {
+      payload.user_id = selectedUser.id;
+    }
+
     const data = await apiFetch('/api/admin/send-notification', session, {
       method: 'POST',
-      body: JSON.stringify({ title: title.trim(), body: body.trim(), topic }),
+      body: JSON.stringify(payload),
     });
 
     if (data.success) {
-      setResult(data);
+      setResult({ ...data, sendMode, userName: selectedUser?.name || selectedUser?.email });
       setTitle('');
       setBody('');
+      setSelectedUser(null);
+      setSearchQuery('');
+      setSearchResults([]);
       loadHistory();
     } else {
       setError(data.error || 'Failed to send notification');
@@ -404,18 +443,113 @@ function NotificationsPage({ session }) {
         <div style={styles.cardTitle}>Send Push Notification</div>
         <form onSubmit={handleSend}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxWidth: '600px' }}>
+            {/* Send mode toggle */}
             <div>
-              <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', marginBottom: '4px', display: 'block' }}>Topic</label>
-              <select
-                style={{ ...styles.input, cursor: 'pointer' }}
-                value={topic}
-                onChange={(e) => setTopic(e.target.value)}
-              >
-                {topics.map((t) => (
-                  <option key={t.value} value={t.value}>{t.label}</option>
+              <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', marginBottom: '8px', display: 'block' }}>Send To</label>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                {[
+                  { value: 'all', label: 'All Users (Topic)' },
+                  { value: 'user', label: 'Specific User' },
+                ].map((mode) => (
+                  <button
+                    key={mode.value}
+                    type="button"
+                    onClick={() => { setSendMode(mode.value); setSelectedUser(null); setSearchQuery(''); setSearchResults([]); setError(''); }}
+                    style={{
+                      padding: '8px 18px', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
+                      border: sendMode === mode.value ? '2px solid #0D7377' : '2px solid #e8e8e8',
+                      background: sendMode === mode.value ? '#e6f7f7' : '#fff',
+                      color: sendMode === mode.value ? '#0D7377' : '#666',
+                    }}
+                  >
+                    {mode.label}
+                  </button>
                 ))}
-              </select>
+              </div>
             </div>
+
+            {/* Topic selector (only for all users mode) */}
+            {sendMode === 'all' && (
+              <div>
+                <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', marginBottom: '4px', display: 'block' }}>Topic</label>
+                <select
+                  style={{ ...styles.input, cursor: 'pointer' }}
+                  value={topic}
+                  onChange={(e) => setTopic(e.target.value)}
+                >
+                  {topics.map((t) => (
+                    <option key={t.value} value={t.value}>{t.label}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* User search (only for specific user mode) */}
+            {sendMode === 'user' && (
+              <div>
+                <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', marginBottom: '4px', display: 'block' }}>Search User</label>
+                {selectedUser ? (
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px',
+                    background: '#e6f7f7', borderRadius: '10px', border: '2px solid #0D7377',
+                  }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: '14px', fontWeight: '600', color: '#0D7377' }}>{selectedUser.name || 'No name'}</div>
+                      <div style={{ fontSize: '12px', color: '#666' }}>{selectedUser.email}</div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => { setSelectedUser(null); setSearchQuery(''); setSearchResults([]); }}
+                      style={{ padding: '4px 10px', background: '#fff', border: '1px solid #ccc', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', color: '#666' }}
+                    >
+                      Change
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <input
+                      style={styles.input}
+                      placeholder="Type name or email to search..."
+                      value={searchQuery}
+                      onChange={(e) => handleSearch(e.target.value)}
+                    />
+                    {searching && <div style={{ fontSize: '12px', color: '#888', marginTop: '4px' }}>Searching...</div>}
+                    {searchResults.length > 0 && (
+                      <div style={{ border: '1px solid #e8e8e8', borderRadius: '10px', marginTop: '6px', maxHeight: '240px', overflowY: 'auto' }}>
+                        {searchResults.map((u) => (
+                          <div
+                            key={u.id}
+                            onClick={() => { setSelectedUser(u); setSearchResults([]); setSearchQuery(''); }}
+                            style={{
+                              padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid #f0f0f0',
+                              display: 'flex', alignItems: 'center', gap: '10px',
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.background = '#f9fafb'}
+                            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                          >
+                            <div style={{
+                              width: '32px', height: '32px', borderRadius: '50%', background: '#e6f7f7',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              fontSize: '13px', fontWeight: '700', color: '#0D7377',
+                            }}>
+                              {(u.name || u.email || '?')[0].toUpperCase()}
+                            </div>
+                            <div>
+                              <div style={{ fontSize: '13px', fontWeight: '600', color: '#333' }}>{u.name || 'No name'}</div>
+                              <div style={{ fontSize: '11px', color: '#888' }}>{u.email}</div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {searchQuery.length >= 2 && !searching && searchResults.length === 0 && (
+                      <div style={{ fontSize: '12px', color: '#999', marginTop: '4px' }}>No users found</div>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+
             <div>
               <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', marginBottom: '4px', display: 'block' }}>Title</label>
               <input
@@ -444,7 +578,9 @@ function NotificationsPage({ session }) {
                 style={{ ...styles.btnPrimary, opacity: sending ? 0.7 : 1 }}
                 disabled={sending}
               >
-                {sending ? 'Sending...' : `Send to "${topics.find((t) => t.value === topic)?.label}"`}
+                {sending ? 'Sending...' : sendMode === 'user'
+                  ? `Send to ${selectedUser?.name || selectedUser?.email || 'User'}`
+                  : `Send to All (${topics.find((t) => t.value === topic)?.label})`}
               </button>
               <span style={{ fontSize: '12px', color: '#999' }}>
                 {title.length}/100 &middot; {body.length}/500
@@ -461,7 +597,9 @@ function NotificationsPage({ session }) {
 
         {result && (
           <div style={{ background: '#e8f5e9', color: '#2e7d32', padding: '12px 16px', borderRadius: '10px', marginTop: '16px', fontSize: '14px' }}>
-            Notification sent to topic &quot;{result.topic}&quot;
+            {result.sendMode === 'user'
+              ? `Notification sent to ${result.userName} (${result.sent} device${result.sent !== 1 ? 's' : ''})`
+              : `Notification sent to topic "${result.topic}"`}
           </div>
         )}
       </div>
