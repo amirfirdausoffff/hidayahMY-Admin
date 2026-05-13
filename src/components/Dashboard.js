@@ -20,6 +20,7 @@ const navItems = [
   { id: 'dashboard', label: 'Dashboard' },
   { id: 'customers', label: 'Customers' },
   { id: 'team', label: 'Team' },
+  { id: 'backgrounds', label: 'Backgrounds' },
   { id: 'content', label: 'Content' },
   { id: 'notifications', label: 'Notifications' },
   { id: 'analytics', label: 'Analytics' },
@@ -189,6 +190,143 @@ function TeamPage({ session }) {
               ))}
             </tbody>
           </table>
+        )}
+      </div>
+    </>
+  );
+}
+
+// ─── Backgrounds ───
+function BackgroundsPage({ session }) {
+  const [backgrounds, setBackgrounds] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [name, setName] = useState('');
+  const [category, setCategory] = useState('dashboard');
+  const [imageData, setImageData] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [filter, setFilter] = useState('all');
+
+  const loadBackgrounds = useCallback(() => {
+    setLoading(true);
+    apiFetch('/api/backgrounds', session)
+      .then((d) => { setBackgrounds(d.backgrounds || []); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, [session]);
+
+  useEffect(() => { loadBackgrounds(); }, [loadBackgrounds]);
+
+  const handleFileSelect = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { setError('Image must be under 5MB'); return; }
+    const reader = new FileReader();
+    reader.onload = () => { setImageData(reader.result); setImagePreview(reader.result); };
+    reader.readAsDataURL(file);
+  };
+
+  const handleUpload = async (e) => {
+    e.preventDefault();
+    if (!name.trim() || !imageData) { setError('Name and image are required'); return; }
+    setUploading(true); setError(''); setSuccess('');
+
+    const d = await apiFetch('/api/backgrounds', session, {
+      method: 'POST',
+      body: JSON.stringify({ name: name.trim(), category, image: imageData }),
+    });
+
+    if (d.success) {
+      setSuccess(`"${name}" uploaded`);
+      setName(''); setImageData(null); setImagePreview(null); setShowForm(false);
+      loadBackgrounds();
+    } else setError(d.error || 'Upload failed');
+    setUploading(false);
+  };
+
+  const handleDelete = async (bg) => {
+    if (!confirm(`Delete "${bg.name}"?`)) return;
+    const d = await apiFetch(`/api/backgrounds/${bg.id}`, session, { method: 'DELETE' });
+    if (d.success) loadBackgrounds();
+    else alert(d.error || 'Failed to delete');
+  };
+
+  const filtered = filter === 'all' ? backgrounds : backgrounds.filter((b) => b.category === filter);
+
+  return (
+    <>
+      {success && <div style={{ color: '#166534', padding: '10px 14px', fontSize: '13px', marginBottom: '16px', background: '#f0fdf4', borderRadius: '6px', border: '1px solid #dcfce7' }}>{success}</div>}
+
+      <div style={s.card}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+          <span style={{ fontSize: '15px', fontWeight: '600', color: '#111' }}>Backgrounds</span>
+          <button style={showForm ? s.btnOutline : s.btn} onClick={() => { setShowForm(!showForm); setError(''); setSuccess(''); }}>
+            {showForm ? 'Cancel' : 'Upload'}
+          </button>
+        </div>
+
+        {showForm && (
+          <form onSubmit={handleUpload} style={{ marginBottom: '20px', padding: '16px', background: '#fafafa', borderRadius: '6px', border: '1px solid #eee' }}>
+            {error && <div style={{ color: '#c00', padding: '8px', fontSize: '13px', marginBottom: '8px' }}>{error}</div>}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxWidth: '400px' }}>
+              <div>
+                <label style={s.label}>Name</label>
+                <input style={s.input} placeholder="e.g. Masjid Negara" value={name} onChange={(e) => setName(e.target.value)} required />
+              </div>
+              <div>
+                <label style={s.label}>Category</label>
+                <select style={{ ...s.input, cursor: 'pointer' }} value={category} onChange={(e) => setCategory(e.target.value)}>
+                  <option value="dashboard">Dashboard Background</option>
+                  <option value="prayer">Prayer Background</option>
+                </select>
+              </div>
+              <div>
+                <label style={s.label}>Image (max 5MB, recommended 1080x1920)</label>
+                <input type="file" accept="image/png,image/jpeg,image/webp" onChange={handleFileSelect}
+                  style={{ fontSize: '13px', color: '#666' }} />
+              </div>
+              {imagePreview && (
+                <div style={{ width: '120px', height: '200px', borderRadius: '6px', overflow: 'hidden', border: '1px solid #eee' }}>
+                  <img src={imagePreview} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                </div>
+              )}
+              <button type="submit" style={{ ...s.btn, opacity: uploading ? 0.6 : 1, alignSelf: 'flex-start' }} disabled={uploading}>
+                {uploading ? 'Uploading...' : 'Upload Background'}
+              </button>
+            </div>
+          </form>
+        )}
+
+        {/* Filter */}
+        <div style={{ display: 'flex', gap: '6px', marginBottom: '16px' }}>
+          {[{ value: 'all', label: 'All' }, { value: 'dashboard', label: 'Dashboard' }, { value: 'prayer', label: 'Prayer' }].map((f) => (
+            <button key={f.value} type="button" onClick={() => setFilter(f.value)}
+              style={{ ...s.btnOutline, background: filter === f.value ? '#111' : '#fff', color: filter === f.value ? '#fff' : '#111', padding: '6px 14px', fontSize: '12px' }}>
+              {f.label}
+            </button>
+          ))}
+        </div>
+
+        {loading ? <p style={{ color: '#999', textAlign: 'center', padding: '32px' }}>Loading...</p> :
+         filtered.length === 0 ? <p style={{ color: '#999', textAlign: 'center', padding: '32px' }}>No backgrounds yet</p> : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '12px' }}>
+            {filtered.map((bg) => (
+              <div key={bg.id} style={{ border: '1px solid #eee', borderRadius: '6px', overflow: 'hidden' }}>
+                <div style={{ width: '100%', height: '180px', background: '#f5f5f5' }}>
+                  <img src={bg.image_url} alt={bg.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                </div>
+                <div style={{ padding: '8px 10px' }}>
+                  <div style={{ fontSize: '12px', fontWeight: '600', color: '#111', marginBottom: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{bg.name}</div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={s.badge()}>{bg.category}</span>
+                    <button onClick={() => handleDelete(bg)} style={{ background: 'none', border: 'none', color: '#c00', fontSize: '11px', cursor: 'pointer', fontWeight: '500' }}>Delete</button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         )}
       </div>
     </>
@@ -426,7 +564,7 @@ function SettingsPage() {
 }
 
 // ─── Layout ───
-const pages = { dashboard: DashboardPage, customers: CustomersPage, team: TeamPage, content: ContentPage, notifications: NotificationsPage, analytics: AnalyticsPage, settings: SettingsPage };
+const pages = { dashboard: DashboardPage, customers: CustomersPage, team: TeamPage, backgrounds: BackgroundsPage, content: ContentPage, notifications: NotificationsPage, analytics: AnalyticsPage, settings: SettingsPage };
 
 export default function Dashboard({ onLogout, session }) {
   const [activePage, setActivePage] = useState('dashboard');
