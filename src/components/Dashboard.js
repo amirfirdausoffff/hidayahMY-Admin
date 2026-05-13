@@ -65,13 +65,13 @@ const styles = {
 };
 
 const navItems = [
-  { id: 'dashboard', label: 'Dashboard', icon: '~' },
-  { id: 'customers', label: 'Customers', icon: '>' },
-  { id: 'team', label: 'Team', icon: '+' },
-  { id: 'content', label: 'Content', icon: '#' },
-  { id: 'notifications', label: 'Notifications', icon: '!' },
-  { id: 'analytics', label: 'Analytics', icon: '%' },
-  { id: 'settings', label: 'Settings', icon: '*' },
+  { id: 'dashboard', label: 'Dashboard', icon: '\u{1F4CA}' },
+  { id: 'customers', label: 'Customers', icon: '\u{1F465}' },
+  { id: 'team', label: 'Team', icon: '\u{1F6E1}' },
+  { id: 'content', label: 'Content', icon: '\u{1F4DD}' },
+  { id: 'notifications', label: 'Notifications', icon: '\u{1F514}' },
+  { id: 'analytics', label: 'Analytics', icon: '\u{1F4C8}' },
+  { id: 'settings', label: 'Settings', icon: '\u{2699}' },
 ];
 
 // ─── Helper: fetch from API with auth ───
