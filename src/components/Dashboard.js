@@ -343,15 +343,148 @@ function ContentPage() {
   );
 }
 
-function NotificationsPage() {
+function NotificationsPage({ session }) {
+  const [title, setTitle] = useState('');
+  const [body, setBody] = useState('');
+  const [sending, setSending] = useState(false);
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState('');
+  const [history, setHistory] = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(true);
+
+  const loadHistory = useCallback(() => {
+    apiFetch('/api/admin/notifications', session)
+      .then((data) => {
+        setHistory(data.notifications || []);
+        setLoadingHistory(false);
+      })
+      .catch(() => setLoadingHistory(false));
+  }, [session]);
+
+  useEffect(() => { loadHistory(); }, [loadHistory]);
+
+  const handleSend = async (e) => {
+    e.preventDefault();
+    if (!title.trim() || !body.trim()) return;
+    if (!confirm(`Send notification to ALL app users?\n\nTitle: ${title}\nBody: ${body}`)) return;
+
+    setSending(true);
+    setResult(null);
+    setError('');
+
+    const data = await apiFetch('/api/admin/send-notification', session, {
+      method: 'POST',
+      body: JSON.stringify({ title: title.trim(), body: body.trim() }),
+    });
+
+    if (data.success) {
+      setResult(data);
+      setTitle('');
+      setBody('');
+      loadHistory();
+    } else {
+      setError(data.error || 'Failed to send notification');
+    }
+    setSending(false);
+  };
+
   return (
-    <div style={styles.card}>
-      <div style={styles.cardTitle}>Push Notifications</div>
-      <div style={{ textAlign: 'center', padding: '60px 20px', color: '#999' }}>
-        <p style={{ fontSize: '16px', fontWeight: '500', marginBottom: '8px' }}>No notifications sent yet</p>
-        <p style={{ fontSize: '14px' }}>Send push notifications to your app users from here.</p>
+    <>
+      {/* Compose form */}
+      <div style={styles.card}>
+        <div style={styles.cardTitle}>Send Push Notification</div>
+        <form onSubmit={handleSend}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxWidth: '600px' }}>
+            <div>
+              <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', marginBottom: '4px', display: 'block' }}>Title</label>
+              <input
+                style={styles.input}
+                placeholder="Notification title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                required
+                maxLength={100}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', marginBottom: '4px', display: 'block' }}>Message</label>
+              <textarea
+                style={{ ...styles.input, minHeight: '100px', resize: 'vertical', fontFamily: 'inherit' }}
+                placeholder="Notification message body"
+                value={body}
+                onChange={(e) => setBody(e.target.value)}
+                required
+                maxLength={500}
+              />
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <button
+                type="submit"
+                style={{ ...styles.btnPrimary, opacity: sending ? 0.7 : 1 }}
+                disabled={sending}
+              >
+                {sending ? 'Sending...' : 'Send to All Users'}
+              </button>
+              <span style={{ fontSize: '12px', color: '#999' }}>
+                {title.length}/100 &middot; {body.length}/500
+              </span>
+            </div>
+          </div>
+        </form>
+
+        {error && (
+          <div style={{ background: '#fee', color: '#c00', padding: '12px 16px', borderRadius: '10px', marginTop: '16px', fontSize: '14px' }}>
+            {error}
+          </div>
+        )}
+
+        {result && (
+          <div style={{ background: '#e8f5e9', color: '#2e7d32', padding: '12px 16px', borderRadius: '10px', marginTop: '16px', fontSize: '14px' }}>
+            Notification sent — {result.sent} delivered, {result.failed} failed
+            {result.cleaned > 0 && `, ${result.cleaned} invalid tokens removed`}
+          </div>
+        )}
       </div>
-    </div>
+
+      {/* History */}
+      <div style={styles.card}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+          <div style={styles.cardTitle}>Notification History</div>
+          <span style={{ fontSize: '14px', color: '#888' }}>{history.length} sent</span>
+        </div>
+
+        {loadingHistory ? (
+          <div style={{ textAlign: 'center', padding: '40px', color: '#888' }}>Loading...</div>
+        ) : history.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
+            <p style={{ fontSize: '15px', fontWeight: '500' }}>No notifications sent yet</p>
+          </div>
+        ) : (
+          <table style={styles.table}>
+            <thead>
+              <tr>
+                <th style={styles.th}>Title</th>
+                <th style={styles.th}>Message</th>
+                <th style={styles.th}>Sent</th>
+                <th style={styles.th}>Failed</th>
+                <th style={styles.th}>Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              {history.map((n) => (
+                <tr key={n.id}>
+                  <td style={{ ...styles.td, fontWeight: '600', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n.title}</td>
+                  <td style={{ ...styles.td, maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n.body}</td>
+                  <td style={styles.td}><span style={{ ...styles.badge('customer') }}>{n.total_sent}</span></td>
+                  <td style={styles.td}>{n.total_failed > 0 ? <span style={{ ...styles.badge('inactive') }}>{n.total_failed}</span> : <span style={{ color: '#999' }}>0</span>}</td>
+                  <td style={styles.td}>{new Date(n.created_at).toLocaleString()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </>
   );
 }
 
