@@ -346,11 +346,19 @@ function ContentPage() {
 function NotificationsPage({ session }) {
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
+  const [topic, setTopic] = useState('general');
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
   const [history, setHistory] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
+
+  const topics = [
+    { value: 'general', label: 'General' },
+    { value: 'announcement', label: 'Announcement' },
+    { value: 'update', label: 'App Update' },
+    { value: 'promo', label: 'Promotion' },
+  ];
 
   const loadHistory = useCallback(() => {
     apiFetch('/api/admin/notifications', session)
@@ -366,7 +374,8 @@ function NotificationsPage({ session }) {
   const handleSend = async (e) => {
     e.preventDefault();
     if (!title.trim() || !body.trim()) return;
-    if (!confirm(`Send notification to ALL app users?\n\nTitle: ${title}\nBody: ${body}`)) return;
+    const topicLabel = topics.find((t) => t.value === topic)?.label || topic;
+    if (!confirm(`Send notification to topic "${topicLabel}"?\n\nTitle: ${title}\nBody: ${body}`)) return;
 
     setSending(true);
     setResult(null);
@@ -374,7 +383,7 @@ function NotificationsPage({ session }) {
 
     const data = await apiFetch('/api/admin/send-notification', session, {
       method: 'POST',
-      body: JSON.stringify({ title: title.trim(), body: body.trim() }),
+      body: JSON.stringify({ title: title.trim(), body: body.trim(), topic }),
     });
 
     if (data.success) {
@@ -395,6 +404,18 @@ function NotificationsPage({ session }) {
         <div style={styles.cardTitle}>Send Push Notification</div>
         <form onSubmit={handleSend}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxWidth: '600px' }}>
+            <div>
+              <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', marginBottom: '4px', display: 'block' }}>Topic</label>
+              <select
+                style={{ ...styles.input, cursor: 'pointer' }}
+                value={topic}
+                onChange={(e) => setTopic(e.target.value)}
+              >
+                {topics.map((t) => (
+                  <option key={t.value} value={t.value}>{t.label}</option>
+                ))}
+              </select>
+            </div>
             <div>
               <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', marginBottom: '4px', display: 'block' }}>Title</label>
               <input
@@ -423,7 +444,7 @@ function NotificationsPage({ session }) {
                 style={{ ...styles.btnPrimary, opacity: sending ? 0.7 : 1 }}
                 disabled={sending}
               >
-                {sending ? 'Sending...' : 'Send to All Users'}
+                {sending ? 'Sending...' : `Send to "${topics.find((t) => t.value === topic)?.label}"`}
               </button>
               <span style={{ fontSize: '12px', color: '#999' }}>
                 {title.length}/100 &middot; {body.length}/500
@@ -440,8 +461,7 @@ function NotificationsPage({ session }) {
 
         {result && (
           <div style={{ background: '#e8f5e9', color: '#2e7d32', padding: '12px 16px', borderRadius: '10px', marginTop: '16px', fontSize: '14px' }}>
-            Notification sent — {result.sent} delivered, {result.failed} failed
-            {result.cleaned > 0 && `, ${result.cleaned} invalid tokens removed`}
+            Notification sent to topic &quot;{result.topic}&quot;
           </div>
         )}
       </div>
@@ -465,8 +485,7 @@ function NotificationsPage({ session }) {
               <tr>
                 <th style={styles.th}>Title</th>
                 <th style={styles.th}>Message</th>
-                <th style={styles.th}>Sent</th>
-                <th style={styles.th}>Failed</th>
+                <th style={styles.th}>Topic</th>
                 <th style={styles.th}>Date</th>
               </tr>
             </thead>
@@ -475,8 +494,7 @@ function NotificationsPage({ session }) {
                 <tr key={n.id}>
                   <td style={{ ...styles.td, fontWeight: '600', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n.title}</td>
                   <td style={{ ...styles.td, maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n.body}</td>
-                  <td style={styles.td}><span style={{ ...styles.badge('customer') }}>{n.total_sent}</span></td>
-                  <td style={styles.td}>{n.total_failed > 0 ? <span style={{ ...styles.badge('inactive') }}>{n.total_failed}</span> : <span style={{ color: '#999' }}>0</span>}</td>
+                  <td style={styles.td}><span style={{ ...styles.badge('admin') }}>{n.topic || 'general'}</span></td>
                   <td style={styles.td}>{new Date(n.created_at).toLocaleString()}</td>
                 </tr>
               ))}
