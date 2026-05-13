@@ -1,92 +1,6 @@
 import { useState } from 'react';
 import { supabase } from '../lib/supabase';
 
-const styles = {
-  container: {
-    minHeight: '100vh',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    background: 'linear-gradient(135deg, #0D7377 0%, #14919B 50%, #095456 100%)',
-    padding: '20px',
-  },
-  card: {
-    background: '#fff',
-    borderRadius: '16px',
-    padding: '40px',
-    width: '100%',
-    maxWidth: '400px',
-    boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
-  },
-  logo: {
-    textAlign: 'center',
-    marginBottom: '32px',
-  },
-  logoIcon: {
-    width: '60px',
-    height: '60px',
-    borderRadius: '16px',
-    margin: '0 auto 16px',
-    objectFit: 'contain',
-  },
-  title: {
-    fontSize: '24px',
-    fontWeight: '700',
-    color: '#1a1a2e',
-    margin: '0 0 4px',
-  },
-  subtitle: {
-    fontSize: '14px',
-    color: '#666',
-    margin: 0,
-  },
-  form: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '16px',
-  },
-  inputGroup: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '6px',
-  },
-  label: {
-    fontSize: '13px',
-    fontWeight: '600',
-    color: '#333',
-    textTransform: 'uppercase',
-    letterSpacing: '0.5px',
-  },
-  input: {
-    padding: '12px 16px',
-    border: '2px solid #e8e8e8',
-    borderRadius: '10px',
-    fontSize: '15px',
-    outline: 'none',
-    transition: 'border-color 0.2s',
-  },
-  button: {
-    padding: '14px',
-    background: 'linear-gradient(135deg, #0D7377, #14919B)',
-    color: '#fff',
-    border: 'none',
-    borderRadius: '10px',
-    fontSize: '16px',
-    fontWeight: '600',
-    cursor: 'pointer',
-    marginTop: '8px',
-    transition: 'opacity 0.2s',
-  },
-  error: {
-    background: '#fee',
-    color: '#c00',
-    padding: '10px 14px',
-    borderRadius: '8px',
-    fontSize: '13px',
-    textAlign: 'center',
-  },
-};
-
 export default function Login({ onLogin }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -108,7 +22,6 @@ export default function Login({ onLogin }) {
       if (authError) {
         setError(authError.message);
       } else if (data.session) {
-        // Check if user has admin role
         const role = data.user?.user_metadata?.role;
         if (role !== 'admin') {
           await supabase.auth.signOut();
@@ -125,75 +38,43 @@ export default function Login({ onLogin }) {
   };
 
   return (
-    <div style={styles.container}>
-      <div style={styles.card}>
-        <div style={styles.logo}>
-          <img src="/hidayahicon.png" alt="HidayahMY" style={styles.logoIcon} />
-          <h1 style={styles.title}>HidayahMY</h1>
-          <p style={styles.subtitle}>Admin Panel</p>
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fff', padding: '20px' }}>
+      <div style={{ width: '100%', maxWidth: '360px' }}>
+        <div style={{ textAlign: 'center', marginBottom: '40px' }}>
+          <img src="/hidayahicon.png" alt="HidayahMY" style={{ width: '48px', height: '48px', borderRadius: '12px', marginBottom: '16px' }} />
+          <h1 style={{ fontSize: '20px', fontWeight: '600', color: '#111', margin: '0 0 4px' }}>HidayahMY</h1>
+          <p style={{ fontSize: '13px', color: '#999', margin: 0 }}>Admin Panel</p>
         </div>
 
-        <form onSubmit={handleSubmit} style={styles.form}>
-          {error && <div style={styles.error}>{error}</div>}
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {error && <div style={{ background: '#fafafa', color: '#c00', padding: '10px 14px', borderRadius: '6px', fontSize: '13px', border: '1px solid #eee' }}>{error}</div>}
 
-          <div style={styles.inputGroup}>
-            <label style={styles.label}>Email</label>
+          <div>
+            <label style={{ fontSize: '12px', fontWeight: '500', color: '#666', marginBottom: '6px', display: 'block' }}>Email</label>
             <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Enter email"
-              style={styles.input}
-              required
+              type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+              placeholder="admin@hidayahmy.com" required
+              style={{ padding: '10px 12px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '14px', outline: 'none', width: '100%', boxSizing: 'border-box' }}
             />
           </div>
 
-          <div style={styles.inputGroup}>
-            <label style={styles.label}>Password</label>
+          <div>
+            <label style={{ fontSize: '12px', fontWeight: '500', color: '#666', marginBottom: '6px', display: 'block' }}>Password</label>
             <div style={{ position: 'relative' }}>
               <input
-                type={showPassword ? 'text' : 'password'}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter password"
-                style={{ ...styles.input, width: '100%', paddingRight: '48px' }}
-                required
+                type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)}
+                placeholder="Enter password" required
+                style={{ padding: '10px 12px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '14px', outline: 'none', width: '100%', boxSizing: 'border-box', paddingRight: '40px' }}
               />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                style={{
-                  position: 'absolute',
-                  right: '12px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  padding: '4px',
-                  fontSize: '18px',
-                  color: '#888',
-                  display: 'flex',
-                  alignItems: 'center',
-                }}
-              >
-                {showPassword ? (
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
-                    <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
-                    <line x1="1" y1="1" x2="23" y2="23" />
-                  </svg>
-                ) : (
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                    <circle cx="12" cy="12" r="3" />
-                  </svg>
-                )}
+              <button type="button" onClick={() => setShowPassword(!showPassword)}
+                style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', color: '#999' }}>
+                {showPassword ? 'Hide' : 'Show'}
               </button>
             </div>
           </div>
 
-          <button type="submit" style={{ ...styles.button, opacity: loading ? 0.7 : 1 }} disabled={loading}>
+          <button type="submit" disabled={loading}
+            style={{ padding: '10px', background: '#111', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '14px', fontWeight: '500', cursor: 'pointer', marginTop: '4px', opacity: loading ? 0.6 : 1 }}>
             {loading ? 'Signing in...' : 'Sign In'}
           </button>
         </form>

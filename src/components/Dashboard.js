@@ -4,184 +4,111 @@ import { doc, onSnapshot } from 'firebase/firestore';
 
 const API_URL = 'https://api.hidayahmy.com';
 
-const styles = {
-  layout: { display: 'flex', minHeight: '100vh' },
-  sidebar: {
-    width: '260px', background: 'linear-gradient(180deg, #0D7377 0%, #095456 100%)',
-    color: '#fff', padding: '24px 0', display: 'flex', flexDirection: 'column',
-    position: 'fixed', height: '100vh', overflowY: 'auto',
-  },
-  sidebarHeader: { padding: '0 24px 24px', borderBottom: '1px solid rgba(255,255,255,0.1)', marginBottom: '16px' },
-  sidebarLogo: { display: 'flex', alignItems: 'center', gap: '12px' },
-  logoBox: { width: '40px', height: '40px', borderRadius: '10px', objectFit: 'contain' },
-  logoText: { fontSize: '18px', fontWeight: '700' },
-  navItem: (active) => ({
-    display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 24px', cursor: 'pointer',
-    background: active ? 'rgba(255,255,255,0.15)' : 'transparent',
-    borderLeft: active ? '3px solid #fff' : '3px solid transparent',
-    fontSize: '14px', fontWeight: active ? '600' : '400', transition: 'all 0.2s',
-  }),
-  navIcon: { fontSize: '18px', width: '24px', textAlign: 'center' },
-  main: { flex: 1, marginLeft: '260px', padding: '32px' },
-  header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' },
-  pageTitle: { fontSize: '28px', fontWeight: '700', color: '#1a1a2e' },
-  logoutBtn: {
-    padding: '10px 20px', background: '#fff', border: '2px solid #e8e8e8',
-    borderRadius: '10px', fontSize: '14px', fontWeight: '500', cursor: 'pointer', color: '#666',
-  },
-  statsGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px', marginBottom: '32px' },
-  statCard: (color) => ({
-    background: '#fff', borderRadius: '14px', padding: '24px',
-    boxShadow: '0 2px 12px rgba(0,0,0,0.06)', borderLeft: `4px solid ${color}`,
-  }),
-  statLabel: { fontSize: '13px', color: '#888', fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.5px' },
-  statValue: { fontSize: '32px', fontWeight: '700', color: '#1a1a2e', margin: '8px 0 4px' },
-  card: { background: '#fff', borderRadius: '14px', padding: '24px', boxShadow: '0 2px 12px rgba(0,0,0,0.06)', marginBottom: '24px' },
-  cardTitle: { fontSize: '18px', fontWeight: '600', color: '#1a1a2e', marginBottom: '20px' },
-  table: { width: '100%', borderCollapse: 'collapse' },
-  th: {
-    textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600',
-    color: '#888', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '2px solid #f0f0f0',
-  },
-  td: { padding: '14px 16px', fontSize: '14px', borderBottom: '1px solid #f5f5f5', color: '#333' },
-  badge: (type) => ({
-    padding: '4px 10px', borderRadius: '20px', fontSize: '12px', fontWeight: '600',
-    background: type === 'admin' ? '#e6f7f7' : type === 'customer' ? '#e8f5e9' : '#fce4ec',
-    color: type === 'admin' ? '#0D7377' : type === 'customer' ? '#2e7d32' : '#c62828',
-  }),
-  input: {
-    padding: '12px 16px', border: '2px solid #e8e8e8', borderRadius: '10px',
-    fontSize: '15px', outline: 'none', width: '100%', boxSizing: 'border-box',
-  },
-  btnPrimary: {
-    padding: '12px 24px', background: 'linear-gradient(135deg, #0D7377, #14919B)',
-    color: '#fff', border: 'none', borderRadius: '10px', fontSize: '14px',
-    fontWeight: '600', cursor: 'pointer',
-  },
-  btnDanger: {
-    padding: '6px 14px', background: '#fee', color: '#c00', border: '1px solid #fcc',
-    borderRadius: '8px', fontSize: '12px', fontWeight: '600', cursor: 'pointer',
-  },
+const s = {
+  input: { padding: '8px 12px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '14px', outline: 'none', width: '100%', boxSizing: 'border-box' },
+  btn: { padding: '8px 16px', background: '#111', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '13px', fontWeight: '500', cursor: 'pointer' },
+  btnOutline: { padding: '8px 16px', background: '#fff', color: '#111', border: '1px solid #ddd', borderRadius: '6px', fontSize: '13px', fontWeight: '500', cursor: 'pointer' },
+  btnDanger: { padding: '6px 12px', background: '#fff', color: '#c00', border: '1px solid #e5e5e5', borderRadius: '6px', fontSize: '12px', fontWeight: '500', cursor: 'pointer' },
+  card: { background: '#fff', border: '1px solid #e5e5e5', borderRadius: '8px', padding: '20px', marginBottom: '20px' },
+  th: { textAlign: 'left', padding: '8px 12px', fontSize: '11px', fontWeight: '600', color: '#999', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid #eee' },
+  td: { padding: '10px 12px', fontSize: '13px', borderBottom: '1px solid #f5f5f5', color: '#333' },
+  badge: (t) => ({ padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: '500', background: '#f5f5f5', color: '#666' }),
+  label: { fontSize: '12px', fontWeight: '500', color: '#666', marginBottom: '4px', display: 'block' },
 };
 
 const navItems = [
-  { id: 'dashboard', label: 'Dashboard', icon: '\u{1F4CA}' },
-  { id: 'customers', label: 'Customers', icon: '\u{1F465}' },
-  { id: 'team', label: 'Team', icon: '\u{1F6E1}' },
-  { id: 'content', label: 'Content', icon: '\u{1F4DD}' },
-  { id: 'notifications', label: 'Notifications', icon: '\u{1F514}' },
-  { id: 'analytics', label: 'Analytics', icon: '\u{1F4C8}' },
-  { id: 'settings', label: 'Settings', icon: '\u{2699}' },
+  { id: 'dashboard', label: 'Dashboard' },
+  { id: 'customers', label: 'Customers' },
+  { id: 'team', label: 'Team' },
+  { id: 'content', label: 'Content' },
+  { id: 'notifications', label: 'Notifications' },
+  { id: 'analytics', label: 'Analytics' },
+  { id: 'settings', label: 'Settings' },
 ];
 
-// ─── Helper: fetch from API with auth ───
 async function apiFetch(path, session, options = {}) {
   const res = await fetch(`${API_URL}${path}`, {
     ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${session.access_token}`,
-      ...options.headers,
-    },
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}`, ...options.headers },
   });
   return res.json();
 }
 
-// ─── Dashboard Page ───
+// ─── Dashboard ───
 function DashboardPage({ session }) {
   const [firebaseStats, setFirebaseStats] = useState(null);
   const [apiStats, setApiStats] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const statsRef = doc(db, 'app_stats', 'dashboard');
-    const unsubscribe = onSnapshot(statsRef, (snap) => {
+    const unsub = onSnapshot(doc(db, 'app_stats', 'dashboard'), (snap) => {
       if (snap.exists()) setFirebaseStats(snap.data());
       setLoading(false);
     });
-    return () => unsubscribe();
+    return () => unsub();
   }, []);
 
-  useEffect(() => {
-    apiFetch('/api/admin/stats', session).then(setApiStats).catch(() => {});
-  }, [session]);
+  useEffect(() => { apiFetch('/api/admin/stats', session).then(setApiStats).catch(() => {}); }, [session]);
 
   const fmt = (n) => (n || 0).toLocaleString();
+  if (loading) return <p style={{ color: '#999', padding: '40px', textAlign: 'center' }}>Loading...</p>;
 
-  if (loading) return <div style={{ textAlign: 'center', padding: '40px', color: '#888' }}>Loading...</div>;
+  const stats = [
+    { label: 'Customers', value: fmt(apiStats?.totalCustomers) },
+    { label: 'Admins', value: fmt(apiStats?.totalAdmins) },
+    { label: 'Downloads', value: fmt(firebaseStats?.downloads) },
+    { label: 'Feedback', value: fmt(firebaseStats?.feedback) },
+  ];
 
   return (
     <>
-      <div style={styles.statsGrid}>
-        <div style={styles.statCard('#0D7377')}>
-          <div style={styles.statLabel}>Customers (App Users)</div>
-          <div style={styles.statValue}>{fmt(apiStats?.totalCustomers)}</div>
-        </div>
-        <div style={styles.statCard('#14919B')}>
-          <div style={styles.statLabel}>Admin Team</div>
-          <div style={styles.statValue}>{fmt(apiStats?.totalAdmins)}</div>
-        </div>
-        <div style={styles.statCard('#2ecc71')}>
-          <div style={styles.statLabel}>Downloads</div>
-          <div style={styles.statValue}>{fmt(firebaseStats?.downloads)}</div>
-        </div>
-        <div style={styles.statCard('#e67e22')}>
-          <div style={styles.statLabel}>Feedback</div>
-          <div style={styles.statValue}>{fmt(firebaseStats?.feedback)}</div>
-        </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+        {stats.map((st) => (
+          <div key={st.label} style={s.card}>
+            <div style={{ fontSize: '11px', fontWeight: '500', color: '#999', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{st.label}</div>
+            <div style={{ fontSize: '28px', fontWeight: '700', color: '#111', marginTop: '4px' }}>{st.value}</div>
+          </div>
+        ))}
       </div>
-
-      <div style={styles.card}>
-        <div style={styles.cardTitle}>Firebase Connection</div>
+      <div style={s.card}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: firebaseStats ? '#2ecc71' : '#e74c3c' }} />
-          <span style={{ fontSize: '14px', color: '#333' }}>
-            {firebaseStats ? 'Connected to Firebase (hidayah-my)' : 'Not connected'}
-          </span>
+          <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: firebaseStats ? '#22c55e' : '#ef4444' }} />
+          <span style={{ fontSize: '13px', color: '#666' }}>{firebaseStats ? 'Firebase connected' : 'Firebase not connected'}</span>
         </div>
       </div>
     </>
   );
 }
 
-// ─── Customers Page (app users) ───
+// ─── Customers ───
 function CustomersPage({ session }) {
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     apiFetch('/api/admin/list-users?role=customer', session)
-      .then((data) => { setCustomers(data.users || []); setLoading(false); })
+      .then((d) => { setCustomers(d.users || []); setLoading(false); })
       .catch(() => setLoading(false));
   }, [session]);
 
-  if (loading) return <div style={{ textAlign: 'center', padding: '40px', color: '#888' }}>Loading customers...</div>;
+  if (loading) return <p style={{ color: '#999', padding: '40px', textAlign: 'center' }}>Loading...</p>;
 
   return (
-    <div style={styles.card}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-        <div style={styles.cardTitle}>App Customers</div>
-        <span style={{ fontSize: '14px', color: '#888' }}>{customers.length} total</span>
+    <div style={s.card}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
+        <span style={{ fontSize: '15px', fontWeight: '600', color: '#111' }}>Customers</span>
+        <span style={{ fontSize: '13px', color: '#999' }}>{customers.length}</span>
       </div>
-      {customers.length === 0 ? (
-        <p style={{ textAlign: 'center', color: '#999', padding: '40px' }}>No customers yet</p>
-      ) : (
-        <table style={styles.table}>
-          <thead>
-            <tr>
-              <th style={styles.th}>Name</th>
-              <th style={styles.th}>Email</th>
-              <th style={styles.th}>Provider</th>
-              <th style={styles.th}>Joined</th>
-            </tr>
-          </thead>
+      {customers.length === 0 ? <p style={{ color: '#999', textAlign: 'center', padding: '32px' }}>No customers yet</p> : (
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead><tr><th style={s.th}>Name</th><th style={s.th}>Email</th><th style={s.th}>Provider</th><th style={s.th}>Joined</th></tr></thead>
           <tbody>
             {customers.map((u) => (
               <tr key={u.id}>
-                <td style={styles.td}>{u.name || '-'}</td>
-                <td style={styles.td}>{u.email}</td>
-                <td style={styles.td}><span style={styles.badge('customer')}>{u.provider || 'email'}</span></td>
-                <td style={styles.td}>{new Date(u.created_at).toLocaleDateString()}</td>
+                <td style={s.td}>{u.name || '-'}</td>
+                <td style={s.td}>{u.email}</td>
+                <td style={s.td}><span style={s.badge()}>{u.provider || 'email'}</span></td>
+                <td style={s.td}>{new Date(u.created_at).toLocaleDateString()}</td>
               </tr>
             ))}
           </tbody>
@@ -191,7 +118,7 @@ function CustomersPage({ session }) {
   );
 }
 
-// ─── Team Page (admin users) ───
+// ─── Team ───
 function TeamPage({ session }) {
   const [admins, setAdmins] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -203,110 +130,61 @@ function TeamPage({ session }) {
 
   const loadAdmins = useCallback(() => {
     apiFetch('/api/admin/list-users?role=admin', session)
-      .then((data) => { setAdmins(data.users || []); setLoading(false); })
+      .then((d) => { setAdmins(d.users || []); setLoading(false); })
       .catch(() => setLoading(false));
   }, [session]);
 
   useEffect(() => { loadAdmins(); }, [loadAdmins]);
 
-  const handleAddAdmin = async (e) => {
-    e.preventDefault();
-    setFormError(''); setFormSuccess(''); setSubmitting(true);
-
-    const data = await apiFetch('/api/admin/add-user', session, {
-      method: 'POST',
-      body: JSON.stringify(formData),
-    });
-
-    if (data.success) {
-      setFormSuccess(`Admin "${formData.name || formData.email}" added successfully`);
-      setFormData({ name: '', email: '', password: '' });
-      setShowForm(false);
-      loadAdmins();
-    } else {
-      setFormError(data.error || 'Failed to add admin');
-    }
+  const handleAdd = async (e) => {
+    e.preventDefault(); setFormError(''); setFormSuccess(''); setSubmitting(true);
+    const d = await apiFetch('/api/admin/add-user', session, { method: 'POST', body: JSON.stringify(formData) });
+    if (d.success) { setFormSuccess(`Added "${formData.name || formData.email}"`); setFormData({ name: '', email: '', password: '' }); setShowForm(false); loadAdmins(); }
+    else setFormError(d.error || 'Failed');
     setSubmitting(false);
   };
 
   const handleRemove = async (user) => {
-    if (!confirm(`Remove admin ${user.email}?`)) return;
-    const data = await apiFetch('/api/admin/remove-user', session, {
-      method: 'DELETE',
-      body: JSON.stringify({ user_id: user.id }),
-    });
-    if (data.success) loadAdmins();
-    else alert(data.error || 'Failed to remove');
+    if (!confirm(`Remove ${user.email}?`)) return;
+    const d = await apiFetch('/api/admin/remove-user', session, { method: 'DELETE', body: JSON.stringify({ user_id: user.id }) });
+    if (d.success) loadAdmins(); else alert(d.error || 'Failed');
   };
 
-  if (loading) return <div style={{ textAlign: 'center', padding: '40px', color: '#888' }}>Loading team...</div>;
+  if (loading) return <p style={{ color: '#999', padding: '40px', textAlign: 'center' }}>Loading...</p>;
 
   return (
     <>
-      {formSuccess && (
-        <div style={{ background: '#e8f5e9', color: '#2e7d32', padding: '12px 16px', borderRadius: '10px', marginBottom: '16px', fontSize: '14px' }}>
-          {formSuccess}
-        </div>
-      )}
-
-      <div style={styles.card}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-          <div style={styles.cardTitle}>Admin Team</div>
-          <button style={styles.btnPrimary} onClick={() => { setShowForm(!showForm); setFormError(''); }}>
-            {showForm ? 'Cancel' : '+ Add Admin'}
+      {formSuccess && <div style={{ background: '#f0fdf4', color: '#166534', padding: '10px 14px', borderRadius: '6px', marginBottom: '16px', fontSize: '13px', border: '1px solid #dcfce7' }}>{formSuccess}</div>}
+      <div style={s.card}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
+          <span style={{ fontSize: '15px', fontWeight: '600', color: '#111' }}>Admin Team</span>
+          <button style={showForm ? s.btnOutline : s.btn} onClick={() => { setShowForm(!showForm); setFormError(''); }}>
+            {showForm ? 'Cancel' : 'Add Admin'}
           </button>
         </div>
 
         {showForm && (
-          <form onSubmit={handleAddAdmin} style={{ marginBottom: '24px', padding: '20px', background: '#f9fafb', borderRadius: '12px' }}>
-            {formError && <div style={{ background: '#fee', color: '#c00', padding: '10px', borderRadius: '8px', marginBottom: '12px', fontSize: '13px' }}>{formError}</div>}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginBottom: '12px' }}>
-              <input
-                style={styles.input} placeholder="Name" value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              />
-              <input
-                style={styles.input} placeholder="Email" type="email" required value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              />
-              <input
-                style={styles.input} placeholder="Password" type="password" required minLength={6} value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              />
+          <form onSubmit={handleAdd} style={{ marginBottom: '20px', padding: '16px', background: '#fafafa', borderRadius: '6px', border: '1px solid #eee' }}>
+            {formError && <div style={{ color: '#c00', padding: '8px', fontSize: '13px', marginBottom: '8px' }}>{formError}</div>}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginBottom: '12px' }}>
+              <input style={s.input} placeholder="Name" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
+              <input style={s.input} placeholder="Email" type="email" required value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
+              <input style={s.input} placeholder="Password" type="password" required minLength={6} value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} />
             </div>
-            <button type="submit" style={{ ...styles.btnPrimary, opacity: submitting ? 0.7 : 1 }} disabled={submitting}>
-              {submitting ? 'Adding...' : 'Add Admin User'}
-            </button>
+            <button type="submit" style={{ ...s.btn, opacity: submitting ? 0.6 : 1 }} disabled={submitting}>{submitting ? 'Adding...' : 'Add'}</button>
           </form>
         )}
 
-        {admins.length === 0 ? (
-          <p style={{ textAlign: 'center', color: '#999', padding: '40px' }}>No admin users yet</p>
-        ) : (
-          <table style={styles.table}>
-            <thead>
-              <tr>
-                <th style={styles.th}>Name</th>
-                <th style={styles.th}>Email</th>
-                <th style={styles.th}>Role</th>
-                <th style={styles.th}>Added</th>
-                <th style={styles.th}>Action</th>
-              </tr>
-            </thead>
+        {admins.length === 0 ? <p style={{ color: '#999', textAlign: 'center', padding: '32px' }}>No admins yet</p> : (
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead><tr><th style={s.th}>Name</th><th style={s.th}>Email</th><th style={s.th}>Role</th><th style={s.th}>Added</th><th style={s.th}></th></tr></thead>
             <tbody>
               {admins.map((u) => (
                 <tr key={u.id}>
-                  <td style={styles.td}>{u.name || '-'}</td>
-                  <td style={styles.td}>{u.email}</td>
-                  <td style={styles.td}><span style={styles.badge('admin')}>Admin</span></td>
-                  <td style={styles.td}>{new Date(u.created_at).toLocaleDateString()}</td>
-                  <td style={styles.td}>
-                    {u.email !== session?.user?.email ? (
-                      <button style={styles.btnDanger} onClick={() => handleRemove(u)}>Remove</button>
-                    ) : (
-                      <span style={{ fontSize: '12px', color: '#888' }}>You</span>
-                    )}
-                  </td>
+                  <td style={s.td}>{u.name || '-'}</td><td style={s.td}>{u.email}</td>
+                  <td style={s.td}><span style={s.badge()}>admin</span></td>
+                  <td style={s.td}>{new Date(u.created_at).toLocaleDateString()}</td>
+                  <td style={s.td}>{u.email !== session?.user?.email ? <button style={s.btnDanger} onClick={() => handleRemove(u)}>Remove</button> : <span style={{ fontSize: '12px', color: '#999' }}>You</span>}</td>
                 </tr>
               ))}
             </tbody>
@@ -317,7 +195,7 @@ function TeamPage({ session }) {
   );
 }
 
-// ─── Content Page ───
+// ─── Content ───
 function ContentPage() {
   const content = [
     { title: 'Prayer Times Update - Ramadan 2026', type: 'Announcement', date: '2026-05-01', status: 'active' },
@@ -326,16 +204,13 @@ function ContentPage() {
     { title: 'App Maintenance Notice', type: 'Announcement', date: '2026-03-20', status: 'inactive' },
   ];
   return (
-    <div style={styles.card}>
-      <div style={styles.cardTitle}>Content Management</div>
-      <table style={styles.table}>
-        <thead><tr><th style={styles.th}>Title</th><th style={styles.th}>Type</th><th style={styles.th}>Date</th><th style={styles.th}>Status</th></tr></thead>
+    <div style={s.card}>
+      <div style={{ fontSize: '15px', fontWeight: '600', color: '#111', marginBottom: '16px' }}>Content</div>
+      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <thead><tr><th style={s.th}>Title</th><th style={s.th}>Type</th><th style={s.th}>Date</th><th style={s.th}>Status</th></tr></thead>
         <tbody>
           {content.map((item) => (
-            <tr key={item.title}>
-              <td style={styles.td}>{item.title}</td><td style={styles.td}>{item.type}</td>
-              <td style={styles.td}>{item.date}</td><td style={styles.td}><span style={styles.badge(item.status)}>{item.status}</span></td>
-            </tr>
+            <tr key={item.title}><td style={s.td}>{item.title}</td><td style={s.td}>{item.type}</td><td style={s.td}>{item.date}</td><td style={s.td}><span style={s.badge()}>{item.status}</span></td></tr>
           ))}
         </tbody>
       </table>
@@ -343,11 +218,12 @@ function ContentPage() {
   );
 }
 
+// ─── Notifications ───
 function NotificationsPage({ session }) {
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [topic, setTopic] = useState('general');
-  const [sendMode, setSendMode] = useState('all'); // 'all' or 'user'
+  const [sendMode, setSendMode] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
@@ -367,10 +243,7 @@ function NotificationsPage({ session }) {
 
   const loadHistory = useCallback(() => {
     apiFetch('/api/admin/notifications', session)
-      .then((data) => {
-        setHistory(data.notifications || []);
-        setLoadingHistory(false);
-      })
+      .then((d) => { setHistory(d.notifications || []); setLoadingHistory(false); })
       .catch(() => setLoadingHistory(false));
   }, [session]);
 
@@ -378,262 +251,132 @@ function NotificationsPage({ session }) {
 
   const handleSearch = async (query) => {
     setSearchQuery(query);
-    if (query.trim().length < 2) {
-      setSearchResults([]);
-      return;
-    }
+    if (query.trim().length < 2) { setSearchResults([]); return; }
     setSearching(true);
-    const data = await apiFetch('/api/admin/list-users?role=customer', session);
-    const users = (data.users || []).filter((u) => {
-      const name = (u.name || '').toLowerCase();
-      const email = (u.email || '').toLowerCase();
-      const q = query.toLowerCase();
-      return name.includes(q) || email.includes(q);
-    });
-    setSearchResults(users.slice(0, 8));
+    const d = await apiFetch('/api/admin/list-users?role=customer', session);
+    const q = query.toLowerCase();
+    setSearchResults((d.users || []).filter((u) => (u.name || '').toLowerCase().includes(q) || (u.email || '').toLowerCase().includes(q)).slice(0, 8));
     setSearching(false);
   };
 
   const handleSend = async (e) => {
     e.preventDefault();
     if (!title.trim() || !body.trim()) return;
+    if (sendMode === 'user' && !selectedUser) { setError('Select a user first'); return; }
+    const target = sendMode === 'user' ? `"${selectedUser.name || selectedUser.email}"` : `all users (${topics.find((t) => t.value === topic)?.label})`;
+    if (!confirm(`Send to ${target}?\n\n${title}\n${body}`)) return;
 
-    if (sendMode === 'user' && !selectedUser) {
-      setError('Please select a user to send to');
-      return;
-    }
-
-    const target = sendMode === 'user'
-      ? `user "${selectedUser.name || selectedUser.email}"`
-      : `all users (topic: ${topics.find((t) => t.value === topic)?.label})`;
-    if (!confirm(`Send notification to ${target}?\n\nTitle: ${title}\nBody: ${body}`)) return;
-
-    setSending(true);
-    setResult(null);
-    setError('');
-
+    setSending(true); setResult(null); setError('');
     const payload = { title: title.trim(), body: body.trim(), topic };
-    if (sendMode === 'user') {
-      payload.user_id = selectedUser.id;
-    }
+    if (sendMode === 'user') payload.user_id = selectedUser.id;
 
-    const data = await apiFetch('/api/admin/send-notification', session, {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    });
-
-    if (data.success) {
-      setResult({ ...data, sendMode, userName: selectedUser?.name || selectedUser?.email });
-      setTitle('');
-      setBody('');
-      setSelectedUser(null);
-      setSearchQuery('');
-      setSearchResults([]);
-      loadHistory();
-    } else {
-      setError(data.error || 'Failed to send notification');
-    }
+    const d = await apiFetch('/api/admin/send-notification', session, { method: 'POST', body: JSON.stringify(payload) });
+    if (d.success) {
+      setResult({ ...d, sendMode, userName: selectedUser?.name || selectedUser?.email });
+      setTitle(''); setBody(''); setSelectedUser(null); setSearchQuery(''); setSearchResults([]); loadHistory();
+    } else setError(d.error || 'Failed');
     setSending(false);
   };
 
   return (
     <>
-      {/* Compose form */}
-      <div style={styles.card}>
-        <div style={styles.cardTitle}>Send Push Notification</div>
-        <form onSubmit={handleSend}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxWidth: '600px' }}>
-            {/* Send mode toggle */}
-            <div>
-              <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', marginBottom: '8px', display: 'block' }}>Send To</label>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                {[
-                  { value: 'all', label: 'All Users (Topic)' },
-                  { value: 'user', label: 'Specific User' },
-                ].map((mode) => (
-                  <button
-                    key={mode.value}
-                    type="button"
-                    onClick={() => { setSendMode(mode.value); setSelectedUser(null); setSearchQuery(''); setSearchResults([]); setError(''); }}
-                    style={{
-                      padding: '8px 18px', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
-                      border: sendMode === mode.value ? '2px solid #0D7377' : '2px solid #e8e8e8',
-                      background: sendMode === mode.value ? '#e6f7f7' : '#fff',
-                      color: sendMode === mode.value ? '#0D7377' : '#666',
-                    }}
-                  >
-                    {mode.label}
-                  </button>
-                ))}
-              </div>
+      <div style={s.card}>
+        <div style={{ fontSize: '15px', fontWeight: '600', color: '#111', marginBottom: '16px' }}>Send Notification</div>
+        <form onSubmit={handleSend} style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxWidth: '560px' }}>
+          {/* Send mode */}
+          <div>
+            <label style={s.label}>Send To</label>
+            <div style={{ display: 'flex', gap: '6px' }}>
+              {[{ value: 'all', label: 'All Users' }, { value: 'user', label: 'Specific User' }].map((m) => (
+                <button key={m.value} type="button" onClick={() => { setSendMode(m.value); setSelectedUser(null); setSearchQuery(''); setSearchResults([]); setError(''); }}
+                  style={{ ...s.btnOutline, background: sendMode === m.value ? '#111' : '#fff', color: sendMode === m.value ? '#fff' : '#111' }}>
+                  {m.label}
+                </button>
+              ))}
             </div>
+          </div>
 
-            {/* Topic selector (only for all users mode) */}
-            {sendMode === 'all' && (
-              <div>
-                <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', marginBottom: '4px', display: 'block' }}>Topic</label>
-                <select
-                  style={{ ...styles.input, cursor: 'pointer' }}
-                  value={topic}
-                  onChange={(e) => setTopic(e.target.value)}
-                >
-                  {topics.map((t) => (
-                    <option key={t.value} value={t.value}>{t.label}</option>
-                  ))}
-                </select>
-              </div>
-            )}
+          {sendMode === 'all' && (
+            <div>
+              <label style={s.label}>Topic</label>
+              <select style={{ ...s.input, cursor: 'pointer' }} value={topic} onChange={(e) => setTopic(e.target.value)}>
+                {topics.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+              </select>
+            </div>
+          )}
 
-            {/* User search (only for specific user mode) */}
-            {sendMode === 'user' && (
-              <div>
-                <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', marginBottom: '4px', display: 'block' }}>Search User</label>
-                {selectedUser ? (
-                  <div style={{
-                    display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px',
-                    background: '#e6f7f7', borderRadius: '10px', border: '2px solid #0D7377',
-                  }}>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: '14px', fontWeight: '600', color: '#0D7377' }}>{selectedUser.name || 'No name'}</div>
-                      <div style={{ fontSize: '12px', color: '#666' }}>{selectedUser.email}</div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => { setSelectedUser(null); setSearchQuery(''); setSearchResults([]); }}
-                      style={{ padding: '4px 10px', background: '#fff', border: '1px solid #ccc', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', color: '#666' }}
-                    >
-                      Change
-                    </button>
+          {sendMode === 'user' && (
+            <div>
+              <label style={s.label}>User</label>
+              {selectedUser ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 12px', background: '#fafafa', borderRadius: '6px', border: '1px solid #ddd' }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: '13px', fontWeight: '600', color: '#111' }}>{selectedUser.name || 'No name'}</div>
+                    <div style={{ fontSize: '12px', color: '#999' }}>{selectedUser.email}</div>
                   </div>
-                ) : (
-                  <>
-                    <input
-                      style={styles.input}
-                      placeholder="Type name or email to search..."
-                      value={searchQuery}
-                      onChange={(e) => handleSearch(e.target.value)}
-                    />
-                    {searching && <div style={{ fontSize: '12px', color: '#888', marginTop: '4px' }}>Searching...</div>}
-                    {searchResults.length > 0 && (
-                      <div style={{ border: '1px solid #e8e8e8', borderRadius: '10px', marginTop: '6px', maxHeight: '240px', overflowY: 'auto' }}>
-                        {searchResults.map((u) => (
-                          <div
-                            key={u.id}
-                            onClick={() => { setSelectedUser(u); setSearchResults([]); setSearchQuery(''); }}
-                            style={{
-                              padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid #f0f0f0',
-                              display: 'flex', alignItems: 'center', gap: '10px',
-                            }}
-                            onMouseEnter={(e) => e.currentTarget.style.background = '#f9fafb'}
-                            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                          >
-                            <div style={{
-                              width: '32px', height: '32px', borderRadius: '50%', background: '#e6f7f7',
-                              display: 'flex', alignItems: 'center', justifyContent: 'center',
-                              fontSize: '13px', fontWeight: '700', color: '#0D7377',
-                            }}>
-                              {(u.name || u.email || '?')[0].toUpperCase()}
-                            </div>
-                            <div>
-                              <div style={{ fontSize: '13px', fontWeight: '600', color: '#333' }}>{u.name || 'No name'}</div>
-                              <div style={{ fontSize: '11px', color: '#888' }}>{u.email}</div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    {searchQuery.length >= 2 && !searching && searchResults.length === 0 && (
-                      <div style={{ fontSize: '12px', color: '#999', marginTop: '4px' }}>No users found</div>
-                    )}
-                  </>
-                )}
-              </div>
-            )}
+                  <button type="button" onClick={() => { setSelectedUser(null); setSearchQuery(''); setSearchResults([]); }} style={{ ...s.btnOutline, padding: '4px 10px', fontSize: '12px' }}>Change</button>
+                </div>
+              ) : (
+                <>
+                  <input style={s.input} placeholder="Search by name or email..." value={searchQuery} onChange={(e) => handleSearch(e.target.value)} />
+                  {searching && <div style={{ fontSize: '12px', color: '#999', marginTop: '4px' }}>Searching...</div>}
+                  {searchResults.length > 0 && (
+                    <div style={{ border: '1px solid #eee', borderRadius: '6px', marginTop: '4px', maxHeight: '200px', overflowY: 'auto' }}>
+                      {searchResults.map((u) => (
+                        <div key={u.id} onClick={() => { setSelectedUser(u); setSearchResults([]); setSearchQuery(''); }}
+                          style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: '1px solid #f5f5f5', fontSize: '13px' }}
+                          onMouseEnter={(e) => e.currentTarget.style.background = '#fafafa'}
+                          onMouseLeave={(e) => e.currentTarget.style.background = '#fff'}>
+                          <div style={{ fontWeight: '500', color: '#111' }}>{u.name || 'No name'}</div>
+                          <div style={{ fontSize: '11px', color: '#999' }}>{u.email}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {searchQuery.length >= 2 && !searching && searchResults.length === 0 && <div style={{ fontSize: '12px', color: '#999', marginTop: '4px' }}>No users found</div>}
+                </>
+              )}
+            </div>
+          )}
 
-            <div>
-              <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', marginBottom: '4px', display: 'block' }}>Title</label>
-              <input
-                style={styles.input}
-                placeholder="Notification title"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                required
-                maxLength={100}
-              />
-            </div>
-            <div>
-              <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', marginBottom: '4px', display: 'block' }}>Message</label>
-              <textarea
-                style={{ ...styles.input, minHeight: '100px', resize: 'vertical', fontFamily: 'inherit' }}
-                placeholder="Notification message body"
-                value={body}
-                onChange={(e) => setBody(e.target.value)}
-                required
-                maxLength={500}
-              />
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <button
-                type="submit"
-                style={{ ...styles.btnPrimary, opacity: sending ? 0.7 : 1 }}
-                disabled={sending}
-              >
-                {sending ? 'Sending...' : sendMode === 'user'
-                  ? `Send to ${selectedUser?.name || selectedUser?.email || 'User'}`
-                  : `Send to All (${topics.find((t) => t.value === topic)?.label})`}
-              </button>
-              <span style={{ fontSize: '12px', color: '#999' }}>
-                {title.length}/100 &middot; {body.length}/500
-              </span>
-            </div>
+          <div>
+            <label style={s.label}>Title</label>
+            <input style={s.input} placeholder="Notification title" value={title} onChange={(e) => setTitle(e.target.value)} required maxLength={100} />
+          </div>
+          <div>
+            <label style={s.label}>Message</label>
+            <textarea style={{ ...s.input, minHeight: '80px', resize: 'vertical', fontFamily: 'inherit' }} placeholder="Message body" value={body} onChange={(e) => setBody(e.target.value)} required maxLength={500} />
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <button type="submit" style={{ ...s.btn, opacity: sending ? 0.6 : 1 }} disabled={sending}>
+              {sending ? 'Sending...' : 'Send'}
+            </button>
+            <span style={{ fontSize: '11px', color: '#ccc' }}>{title.length}/100 | {body.length}/500</span>
           </div>
         </form>
 
-        {error && (
-          <div style={{ background: '#fee', color: '#c00', padding: '12px 16px', borderRadius: '10px', marginTop: '16px', fontSize: '14px' }}>
-            {error}
-          </div>
-        )}
-
-        {result && (
-          <div style={{ background: '#e8f5e9', color: '#2e7d32', padding: '12px 16px', borderRadius: '10px', marginTop: '16px', fontSize: '14px' }}>
-            {result.sendMode === 'user'
-              ? `Notification sent to ${result.userName} (${result.sent} device${result.sent !== 1 ? 's' : ''})`
-              : `Notification sent to topic "${result.topic}"`}
-          </div>
-        )}
+        {error && <div style={{ color: '#c00', padding: '10px', fontSize: '13px', marginTop: '12px', background: '#fafafa', borderRadius: '6px', border: '1px solid #eee' }}>{error}</div>}
+        {result && <div style={{ color: '#166534', padding: '10px', fontSize: '13px', marginTop: '12px', background: '#f0fdf4', borderRadius: '6px', border: '1px solid #dcfce7' }}>
+          {result.sendMode === 'user' ? `Sent to ${result.userName}` : `Sent to topic "${result.topic}"`}
+        </div>}
       </div>
 
-      {/* History */}
-      <div style={styles.card}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-          <div style={styles.cardTitle}>Notification History</div>
-          <span style={{ fontSize: '14px', color: '#888' }}>{history.length} sent</span>
+      <div style={s.card}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
+          <span style={{ fontSize: '15px', fontWeight: '600', color: '#111' }}>History</span>
+          <span style={{ fontSize: '13px', color: '#999' }}>{history.length}</span>
         </div>
-
-        {loadingHistory ? (
-          <div style={{ textAlign: 'center', padding: '40px', color: '#888' }}>Loading...</div>
-        ) : history.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
-            <p style={{ fontSize: '15px', fontWeight: '500' }}>No notifications sent yet</p>
-          </div>
-        ) : (
-          <table style={styles.table}>
-            <thead>
-              <tr>
-                <th style={styles.th}>Title</th>
-                <th style={styles.th}>Message</th>
-                <th style={styles.th}>Topic</th>
-                <th style={styles.th}>Date</th>
-              </tr>
-            </thead>
+        {loadingHistory ? <p style={{ color: '#999', textAlign: 'center', padding: '32px' }}>Loading...</p> :
+         history.length === 0 ? <p style={{ color: '#999', textAlign: 'center', padding: '32px' }}>No notifications sent yet</p> : (
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead><tr><th style={s.th}>Title</th><th style={s.th}>Message</th><th style={s.th}>Topic</th><th style={s.th}>Date</th></tr></thead>
             <tbody>
               {history.map((n) => (
                 <tr key={n.id}>
-                  <td style={{ ...styles.td, fontWeight: '600', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n.title}</td>
-                  <td style={{ ...styles.td, maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n.body}</td>
-                  <td style={styles.td}><span style={{ ...styles.badge('admin') }}>{n.topic || 'general'}</span></td>
-                  <td style={styles.td}>{new Date(n.created_at).toLocaleString()}</td>
+                  <td style={{ ...s.td, fontWeight: '500', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n.title}</td>
+                  <td style={{ ...s.td, maxWidth: '260px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n.body}</td>
+                  <td style={s.td}><span style={s.badge()}>{n.topic || 'general'}</span></td>
+                  <td style={s.td}>{new Date(n.created_at).toLocaleString()}</td>
                 </tr>
               ))}
             </tbody>
@@ -644,8 +387,9 @@ function NotificationsPage({ session }) {
   );
 }
 
+// ─── Analytics ───
 function AnalyticsPage() {
-  const topFeatures = [
+  const data = [
     { feature: 'Prayer Times', usage: '89%', sessions: '11,087' },
     { feature: 'Al-Quran', usage: '72%', sessions: '8,965' },
     { feature: 'Qiblah Compass', usage: '56%', sessions: '6,973' },
@@ -653,88 +397,64 @@ function AnalyticsPage() {
     { feature: 'Zakat Calculator', usage: '31%', sessions: '3,862' },
   ];
   return (
-    <div style={styles.card}>
-      <div style={styles.cardTitle}>Top Features by Usage</div>
-      <table style={styles.table}>
-        <thead><tr><th style={styles.th}>Feature</th><th style={styles.th}>Usage Rate</th><th style={styles.th}>Sessions</th></tr></thead>
-        <tbody>
-          {topFeatures.map((f) => (
-            <tr key={f.feature}><td style={styles.td}>{f.feature}</td><td style={styles.td}>{f.usage}</td><td style={styles.td}>{f.sessions}</td></tr>
-          ))}
-        </tbody>
+    <div style={s.card}>
+      <div style={{ fontSize: '15px', fontWeight: '600', color: '#111', marginBottom: '16px' }}>Top Features</div>
+      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <thead><tr><th style={s.th}>Feature</th><th style={s.th}>Usage</th><th style={s.th}>Sessions</th></tr></thead>
+        <tbody>{data.map((f) => <tr key={f.feature}><td style={s.td}>{f.feature}</td><td style={s.td}>{f.usage}</td><td style={s.td}>{f.sessions}</td></tr>)}</tbody>
       </table>
     </div>
   );
 }
 
+// ─── Settings ───
 function SettingsPage() {
   return (
-    <div style={styles.card}>
-      <div style={styles.cardTitle}>App Settings</div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', maxWidth: '500px' }}>
+    <div style={s.card}>
+      <div style={{ fontSize: '15px', fontWeight: '600', color: '#111', marginBottom: '16px' }}>Settings</div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', maxWidth: '400px' }}>
         {[['App Name', 'HidayahMY'], ['Support Email', 'support@hidayahmy.com'], ['Default Language', 'Bahasa Malaysia'], ['Prayer Time Source', 'JAKIM']].map(([label, val]) => (
-          <div key={label} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <label style={{ fontSize: '14px', fontWeight: '600', color: '#333' }}>{label}</label>
-            <input style={styles.input} defaultValue={val} />
+          <div key={label}>
+            <label style={s.label}>{label}</label>
+            <input style={s.input} defaultValue={val} />
           </div>
         ))}
-        <button style={{ ...styles.btnPrimary, alignSelf: 'flex-start' }}>Save Changes</button>
+        <button style={{ ...s.btn, alignSelf: 'flex-start' }}>Save</button>
       </div>
     </div>
   );
 }
 
-// ─── Main Dashboard Layout ───
-const pages = {
-  dashboard: DashboardPage,
-  customers: CustomersPage,
-  team: TeamPage,
-  content: ContentPage,
-  notifications: NotificationsPage,
-  analytics: AnalyticsPage,
-  settings: SettingsPage,
-};
+// ─── Layout ───
+const pages = { dashboard: DashboardPage, customers: CustomersPage, team: TeamPage, content: ContentPage, notifications: NotificationsPage, analytics: AnalyticsPage, settings: SettingsPage };
 
 export default function Dashboard({ onLogout, session }) {
-  const userEmail = session?.user?.email || 'Admin';
   const [activePage, setActivePage] = useState('dashboard');
   const PageComponent = pages[activePage];
 
   return (
-    <div style={styles.layout}>
-      <aside style={styles.sidebar}>
-        <div style={styles.sidebarHeader}>
-          <div style={styles.sidebarLogo}>
-            <img src="/hidayahicon.png" alt="HidayahMY" style={styles.logoBox} />
-            <span style={styles.logoText}>HidayahMY</span>
-          </div>
+    <div style={{ display: 'flex', minHeight: '100vh' }}>
+      <aside style={{ width: '220px', background: '#111', color: '#fff', position: 'fixed', height: '100vh', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ padding: '20px', borderBottom: '1px solid #222', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <img src="/hidayahicon.png" alt="" style={{ width: '28px', height: '28px', borderRadius: '6px' }} />
+          <span style={{ fontSize: '15px', fontWeight: '600' }}>HidayahMY</span>
         </div>
-        <nav>
+        <nav style={{ padding: '8px 0', flex: 1 }}>
           {navItems.map((item) => (
-            <div key={item.id} style={styles.navItem(activePage === item.id)} onClick={() => setActivePage(item.id)}>
-              <span style={styles.navIcon}>{item.icon}</span>
-              <span>{item.label}</span>
+            <div key={item.id} onClick={() => setActivePage(item.id)}
+              style={{ padding: '10px 20px', cursor: 'pointer', fontSize: '13px', fontWeight: activePage === item.id ? '600' : '400', background: activePage === item.id ? '#222' : 'transparent', color: activePage === item.id ? '#fff' : '#888', borderLeft: activePage === item.id ? '2px solid #fff' : '2px solid transparent' }}>
+              {item.label}
             </div>
           ))}
         </nav>
-        <div style={{ marginTop: 'auto', padding: '24px' }}>
-          <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)', marginBottom: '12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {userEmail}
-          </div>
-          <div onClick={onLogout} style={{
-            padding: '10px 16px', background: 'rgba(255,255,255,0.1)', borderRadius: '10px',
-            textAlign: 'center', cursor: 'pointer', fontSize: '14px', fontWeight: '500',
-          }}>
-            Sign Out
-          </div>
+        <div style={{ padding: '16px 20px', borderTop: '1px solid #222' }}>
+          <div style={{ fontSize: '11px', color: '#666', marginBottom: '8px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{session?.user?.email}</div>
+          <div onClick={onLogout} style={{ padding: '8px', background: '#222', borderRadius: '6px', textAlign: 'center', cursor: 'pointer', fontSize: '13px', color: '#999' }}>Sign Out</div>
         </div>
       </aside>
 
-      <main style={styles.main}>
-        <div style={styles.header}>
-          <h1 style={styles.pageTitle}>{navItems.find((n) => n.id === activePage)?.label}</h1>
-          <button style={styles.logoutBtn} onClick={onLogout}>Sign Out</button>
-        </div>
+      <main style={{ flex: 1, marginLeft: '220px', padding: '24px 32px', background: '#fafafa' }}>
+        <h1 style={{ fontSize: '20px', fontWeight: '600', color: '#111', marginBottom: '24px' }}>{navItems.find((n) => n.id === activePage)?.label}</h1>
         <PageComponent session={session} />
       </main>
     </div>
