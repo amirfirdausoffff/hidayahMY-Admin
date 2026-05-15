@@ -204,7 +204,8 @@ function BackgroundsPage({ session }) {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState('');
-  const [category, setCategory] = useState('dashboard');
+  const [catDashboard, setCatDashboard] = useState(true);
+  const [catPrayer, setCatPrayer] = useState(false);
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [uploading, setUploading] = useState(false);
@@ -232,7 +233,10 @@ function BackgroundsPage({ session }) {
   const handleUpload = async (e) => {
     e.preventDefault();
     if (!name.trim() || !imageFile) { setError('Name and image are required'); return; }
+    if (!catDashboard && !catPrayer) { setError('Select at least one display location'); return; }
     setUploading(true); setError(''); setSuccess('');
+
+    const category = catDashboard && catPrayer ? 'both' : catDashboard ? 'dashboard' : 'prayer';
 
     try {
       // Upload directly to Supabase Storage
@@ -256,7 +260,7 @@ function BackgroundsPage({ session }) {
 
       if (d.success) {
         setSuccess(`"${name}" uploaded`);
-        setName(''); setImageFile(null); setImagePreview(null); setShowForm(false);
+        setName(''); setImageFile(null); setImagePreview(null); setCatDashboard(true); setCatPrayer(false); setShowForm(false);
         loadBackgrounds();
       } else setError(d.error || 'Save failed');
     } catch (err) {
@@ -272,7 +276,7 @@ function BackgroundsPage({ session }) {
     else alert(d.error || 'Failed to delete');
   };
 
-  const filtered = filter === 'all' ? backgrounds : backgrounds.filter((b) => b.category === filter);
+  const filtered = filter === 'all' ? backgrounds : backgrounds.filter((b) => b.category === filter || b.category === 'both');
 
   return (
     <>
@@ -295,11 +299,15 @@ function BackgroundsPage({ session }) {
                 <input style={s.input} placeholder="e.g. Masjid Negara" value={name} onChange={(e) => setName(e.target.value)} required />
               </div>
               <div>
-                <label style={s.label}>Category</label>
-                <select style={{ ...s.input, cursor: 'pointer' }} value={category} onChange={(e) => setCategory(e.target.value)}>
-                  <option value="dashboard">Dashboard Background</option>
-                  <option value="prayer">Prayer Background</option>
-                </select>
+                <label style={s.label}>Display In</label>
+                <div style={{ display: 'flex', gap: '16px', marginTop: '4px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', cursor: 'pointer', color: '#333' }}>
+                    <input type="checkbox" checked={catDashboard} onChange={(e) => setCatDashboard(e.target.checked)} /> Dashboard
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', cursor: 'pointer', color: '#333' }}>
+                    <input type="checkbox" checked={catPrayer} onChange={(e) => setCatPrayer(e.target.checked)} /> Prayer
+                  </label>
+                </div>
               </div>
               <div>
                 <label style={s.label}>Image (max 5MB, recommended 1080x1920)</label>
@@ -339,7 +347,7 @@ function BackgroundsPage({ session }) {
                 <div style={{ padding: '8px 10px' }}>
                   <div style={{ fontSize: '12px', fontWeight: '600', color: '#111', marginBottom: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{bg.name}</div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={s.badge()}>{bg.category}</span>
+                    <span style={s.badge()}>{bg.category === 'both' ? 'all' : bg.category}</span>
                     <button onClick={() => handleDelete(bg)} style={{ background: 'none', border: 'none', color: '#c00', fontSize: '11px', cursor: 'pointer', fontWeight: '500' }}>Delete</button>
                   </div>
                 </div>
