@@ -22,6 +22,7 @@ const navItems = [
   { id: 'customers', label: 'Customers' },
   { id: 'team', label: 'Team' },
   { id: 'backgrounds', label: 'Backgrounds' },
+  { id: 'azan', label: 'Azan Sounds' },
   { id: 'content', label: 'Content' },
   { id: 'notifications', label: 'Notifications' },
   { id: 'analytics', label: 'Analytics' },
@@ -351,6 +352,146 @@ function BackgroundsPage({ session }) {
   );
 }
 
+// ─── Azan Sounds ───
+function AzanSoundsPage({ session }) {
+  const [azanSounds, setAzanSounds] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [name, setName] = useState('');
+  const [audioFile, setAudioFile] = useState(null);
+  const [durationSeconds, setDurationSeconds] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  const loadAzanSounds = useCallback(() => {
+    setLoading(true);
+    apiFetch('/api/azan-sounds', session)
+      .then((d) => { setAzanSounds(d.azanSounds || []); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, [session]);
+
+  useEffect(() => { loadAzanSounds(); }, [loadAzanSounds]);
+
+  const handleFileSelect = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 20 * 1024 * 1024) { setError('Audio must be under 20MB'); return; }
+    setAudioFile(file);
+    setError('');
+    // Auto-detect duration
+    const audio = new Audio();
+    audio.src = URL.createObjectURL(file);
+    audio.addEventListener('loadedmetadata', () => {
+      setDurationSeconds(Math.round(audio.duration));
+      URL.revokeObjectURL(audio.src);
+    });
+  };
+
+  const handleUpload = async (e) => {
+    e.preventDefault();
+    if (!name.trim() || !audioFile) { setError('Name and audio file are required'); return; }
+    setUploading(true); setError(''); setSuccess('');
+
+    try {
+      const ext = audioFile.name.split('.').pop();
+      const fileName = `${Date.now()}_${name.trim().replace(/\s+/g, '_').toLowerCase()}.${ext}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('azan')
+        .upload(fileName, audioFile, { contentType: audioFile.type, upsert: false });
+
+      if (uploadError) { setError(uploadError.message); setUploading(false); return; }
+
+      const { data: urlData } = supabase.storage.from('azan').getPublicUrl(fileName);
+
+      const d = await apiFetch('/api/azan-sounds', session, {
+        method: 'POST',
+        body: JSON.stringify({ name: name.trim(), file_url: urlData.publicUrl, storage_path: fileName, duration_seconds: durationSeconds }),
+      });
+
+      if (d.success) {
+        setSuccess(`"${name}" uploaded`);
+        setName(''); setAudioFile(null); setDurationSeconds(null); setShowForm(false);
+        loadAzanSounds();
+      } else setError(d.error || 'Save failed');
+    } catch (err) {
+      setError(err.message || 'Upload failed');
+    }
+    setUploading(false);
+  };
+
+  const handleDelete = async (sound) => {
+    if (!confirm(`Delete "${sound.name}"?`)) return;
+    const d = await apiFetch(`/api/azan-sounds/${sound.id}`, session, { method: 'DELETE' });
+    if (d.success) loadAzanSounds();
+    else alert(d.error || 'Failed to delete');
+  };
+
+  const fmtDuration = (sec) => {
+    if (!sec) return '-';
+    const m = Math.floor(sec / 60);
+    const s2 = sec % 60;
+    return `${m}:${s2.toString().padStart(2, '0')}`;
+  };
+
+  return (
+    <>
+      {success && <div style={{ color: '#166534', padding: '10px 14px', fontSize: '13px', marginBottom: '16px', background: '#f0fdf4', borderRadius: '6px', border: '1px solid #dcfce7' }}>{success}</div>}
+
+      <div style={s.card}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+          <span style={{ fontSize: '15px', fontWeight: '600', color: '#111' }}>Azan Sounds</span>
+          <button style={showForm ? s.btnOutline : s.btn} onClick={() => { setShowForm(!showForm); setError(''); setSuccess(''); }}>
+            {showForm ? 'Cancel' : 'Upload Azan'}
+          </button>
+        </div>
+
+        {showForm && (
+          <form onSubmit={handleUpload} style={{ marginBottom: '20px', padding: '16px', background: '#fafafa', borderRadius: '6px', border: '1px solid #eee' }}>
+            {error && <div style={{ color: '#c00', padding: '8px', fontSize: '13px', marginBottom: '8px' }}>{error}</div>}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxWidth: '400px' }}>
+              <div>
+                <label style={s.label}>Name</label>
+                <input style={s.input} placeholder="e.g. Azan Makkah" value={name} onChange={(e) => setName(e.target.value)} required />
+              </div>
+              <div>
+                <label style={s.label}>Audio File (max 20MB, MP3/M4A/AAC/WAV)</label>
+                <input type="file" accept="audio/mp3,audio/mpeg,audio/m4a,audio/aac,audio/wav,audio/x-m4a,audio/mp4" onChange={handleFileSelect}
+                  style={{ fontSize: '13px', color: '#666' }} />
+              </div>
+              {durationSeconds && (
+                <div style={{ fontSize: '12px', color: '#666' }}>Duration: {fmtDuration(durationSeconds)}</div>
+              )}
+              <button type="submit" style={{ ...s.btn, opacity: uploading ? 0.6 : 1, alignSelf: 'flex-start' }} disabled={uploading}>
+                {uploading ? 'Uploading...' : 'Upload Azan Sound'}
+              </button>
+            </div>
+          </form>
+        )}
+
+        {loading ? <p style={{ color: '#999', textAlign: 'center', padding: '32px' }}>Loading...</p> :
+         azanSounds.length === 0 ? <p style={{ color: '#999', textAlign: 'center', padding: '32px' }}>No azan sounds uploaded yet</p> : (
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead><tr><th style={s.th}>Name</th><th style={s.th}>Preview</th><th style={s.th}>Duration</th><th style={s.th}>Uploaded</th><th style={s.th}></th></tr></thead>
+            <tbody>
+              {azanSounds.map((sound) => (
+                <tr key={sound.id}>
+                  <td style={{ ...s.td, fontWeight: '500' }}>{sound.name}</td>
+                  <td style={s.td}><audio controls src={sound.file_url} style={{ height: '32px', maxWidth: '220px' }} /></td>
+                  <td style={s.td}>{fmtDuration(sound.duration_seconds)}</td>
+                  <td style={s.td}>{new Date(sound.created_at).toLocaleDateString()}</td>
+                  <td style={s.td}><button onClick={() => handleDelete(sound)} style={{ background: 'none', border: 'none', color: '#c00', fontSize: '11px', cursor: 'pointer', fontWeight: '500' }}>Delete</button></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </>
+  );
+}
+
 // ─── Content ───
 function ContentPage() {
   const content = [
@@ -582,7 +723,7 @@ function SettingsPage() {
 }
 
 // ─── Layout ───
-const pages = { dashboard: DashboardPage, customers: CustomersPage, team: TeamPage, backgrounds: BackgroundsPage, content: ContentPage, notifications: NotificationsPage, analytics: AnalyticsPage, settings: SettingsPage };
+const pages = { dashboard: DashboardPage, customers: CustomersPage, team: TeamPage, backgrounds: BackgroundsPage, azan: AzanSoundsPage, content: ContentPage, notifications: NotificationsPage, analytics: AnalyticsPage, settings: SettingsPage };
 
 export default function Dashboard({ onLogout, session }) {
   const [activePage, setActivePage] = useState('dashboard');
