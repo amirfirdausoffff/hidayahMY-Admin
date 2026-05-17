@@ -6,6 +6,7 @@ import {
   LayoutDashboard, Users, ShieldCheck, Image, Volume2,
   Bell, MessageSquareText, LogOut, ChevronDown, ChevronRight,
   Plus, Trash2, Upload, Search, Check, X, Play,
+  CalendarDays, Tag, Edit3, ToggleLeft, ToggleRight, AlertTriangle, Ban, Eye,
 } from 'lucide-react';
 
 const API_URL = 'https://api.hidayahmy.com';
@@ -822,6 +823,420 @@ function FeedbackPage({ session, showToast }) {
   );
 }
 
+// ─── Events ───
+function EventsPage({ session, showToast }) {
+  const [events, setEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState('all');
+  const [selected, setSelected] = useState(null);
+  const [rejectionReason, setRejectionReason] = useState('');
+  const [actionLoading, setActionLoading] = useState(null);
+
+  const loadEvents = useCallback(() => {
+    apiFetch('/api/events', session)
+      .then((d) => { setEvents(d.events || []); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, [session]);
+
+  useEffect(() => { loadEvents(); }, [loadEvents]);
+
+  const pendingCount = events.filter((e) => e.status === 'pending').length;
+
+  const handleApprove = async (evt) => {
+    setActionLoading(evt.id);
+    const d = await apiFetch(`/api/events/${evt.id}`, session, { method: 'PUT', body: JSON.stringify({ status: 'approved' }) });
+    if (d.success) { showToast(`"${evt.title}" approved`); setSelected(null); loadEvents(); }
+    else alert(d.error || 'Failed to approve');
+    setActionLoading(null);
+  };
+
+  const handleReject = async (evt) => {
+    if (!rejectionReason.trim()) { alert('Please enter a rejection reason'); return; }
+    setActionLoading(evt.id);
+    const d = await apiFetch(`/api/events/${evt.id}`, session, { method: 'PUT', body: JSON.stringify({ status: 'rejected', rejection_reason: rejectionReason.trim() }) });
+    if (d.success) { showToast(`"${evt.title}" rejected`); setSelected(null); setRejectionReason(''); loadEvents(); }
+    else alert(d.error || 'Failed to reject');
+    setActionLoading(null);
+  };
+
+  const handleDelete = async (evt) => {
+    if (!confirm(`Delete "${evt.title}"? This cannot be undone.`)) return;
+    setActionLoading(evt.id);
+    const d = await apiFetch(`/api/events/${evt.id}`, session, { method: 'DELETE' });
+    if (d.success) { showToast(`"${evt.title}" deleted`); setSelected(null); loadEvents(); }
+    else alert(d.error || 'Failed to delete');
+    setActionLoading(null);
+  };
+
+  const handleKeep = async (evt) => {
+    setActionLoading(evt.id);
+    const d = await apiFetch(`/api/events/${evt.id}`, session, { method: 'PUT', body: JSON.stringify({ status: 'approved' }) });
+    if (d.success) { showToast(`"${evt.title}" kept and reports dismissed`); setSelected(null); loadEvents(); }
+    else alert(d.error || 'Failed');
+    setActionLoading(null);
+  };
+
+  const filtered = filter === 'all' ? events : events.filter((e) => e.status === filter);
+
+  const statusBadge = (status) => {
+    const styles = {
+      pending: 'bg-amber-50 text-amber-600',
+      approved: 'bg-emerald-50 text-emerald-600',
+      rejected: 'bg-red-50 text-red-600',
+      reported: 'bg-orange-50 text-orange-600',
+    };
+    return <span className={`text-xs px-2 py-0.5 rounded font-medium ${styles[status] || 'bg-gray-100 text-gray-500'}`}>{status}</span>;
+  };
+
+  const filters = [
+    { value: 'all', label: 'All' },
+    { value: 'pending', label: 'Pending', count: pendingCount },
+    { value: 'approved', label: 'Approved' },
+    { value: 'reported', label: 'Reported' },
+    { value: 'rejected', label: 'Rejected' },
+  ];
+
+  if (loading) return <div className="flex justify-center py-20 text-gray-400">Loading...</div>;
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-white rounded-xl border border-gray-100">
+        <div className="flex items-center justify-between p-5 border-b border-gray-50">
+          <div className="flex items-center gap-3">
+            <h2 className="text-sm font-semibold text-gray-900">Events</h2>
+            <span className="text-xs text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full">{filtered.length}</span>
+          </div>
+          <div className="flex gap-1.5">
+            {filters.map((f) => (
+              <button key={f.value} onClick={() => setFilter(f.value)}
+                className={`px-3 py-1.5 text-xs font-medium rounded-lg transition flex items-center gap-1.5 ${filter === f.value ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
+                {f.label}
+                {f.count > 0 && (
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${filter === f.value ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-700'}`}>
+                    {f.count}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {filtered.length === 0 ? <div className="text-gray-400 text-center py-12 text-sm">No events found</div> : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead><tr className="border-b border-gray-50">
+                <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Title</th>
+                <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Location</th>
+                <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Type</th>
+                <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Creator</th>
+                <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Status</th>
+                <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Date</th>
+                <th className="px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider text-right">Actions</th>
+              </tr></thead>
+              <tbody>
+                {filtered.map((evt) => (
+                  <tr key={evt.id} onClick={() => { setSelected(selected?.id === evt.id ? null : evt); setRejectionReason(''); }}
+                    className={`border-b border-gray-50 last:border-0 hover:bg-gray-50/50 cursor-pointer ${selected?.id === evt.id ? 'bg-gray-50/80' : ''}`}>
+                    <td className="px-5 py-3 text-sm text-gray-900 font-medium max-w-[200px] truncate">{evt.title}</td>
+                    <td className="px-5 py-3 text-sm text-gray-500 max-w-[150px] truncate">{evt.location || '-'}</td>
+                    <td className="px-5 py-3"><span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded">{evt.type || '-'}</span></td>
+                    <td className="px-5 py-3 text-sm text-gray-500">{evt.creator_name || evt.creator_email || '-'}</td>
+                    <td className="px-5 py-3">
+                      <div className="flex items-center gap-1.5">
+                        {statusBadge(evt.status)}
+                        {evt.status === 'reported' && evt.report_count > 0 && (
+                          <span className="text-[10px] bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded-full font-semibold">{evt.report_count}</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-5 py-3 text-sm text-gray-400">{evt.event_date ? new Date(evt.event_date).toLocaleDateString() : '-'}</td>
+                    <td className="px-5 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center justify-end gap-1.5">
+                        {evt.status === 'pending' && (
+                          <>
+                            <button onClick={() => handleApprove(evt)} disabled={actionLoading === evt.id}
+                              className="text-xs bg-emerald-50 text-emerald-600 px-2.5 py-1 rounded-lg hover:bg-emerald-100 font-medium transition disabled:opacity-50">
+                              Approve
+                            </button>
+                            <button onClick={() => { setSelected(evt); setRejectionReason(''); }} disabled={actionLoading === evt.id}
+                              className="text-xs bg-red-50 text-red-600 px-2.5 py-1 rounded-lg hover:bg-red-100 font-medium transition disabled:opacity-50">
+                              Reject
+                            </button>
+                          </>
+                        )}
+                        {evt.status === 'reported' && (
+                          <>
+                            <button onClick={() => handleKeep(evt)} disabled={actionLoading === evt.id}
+                              className="text-xs bg-emerald-50 text-emerald-600 px-2.5 py-1 rounded-lg hover:bg-emerald-100 font-medium transition disabled:opacity-50">
+                              Keep
+                            </button>
+                            <button onClick={() => handleDelete(evt)} disabled={actionLoading === evt.id}
+                              className="text-xs bg-red-50 text-red-600 px-2.5 py-1 rounded-lg hover:bg-red-100 font-medium transition disabled:opacity-50">
+                              Remove
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Detail panel */}
+      {selected && (
+        <div className="bg-white rounded-xl border border-gray-100 p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-semibold text-gray-900">Event Detail</h2>
+            <button onClick={() => setSelected(null)} className="text-gray-400 hover:text-gray-600"><X size={16} /></button>
+          </div>
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div><span className="block text-xs font-medium text-gray-400 mb-0.5">Title</span><span className="text-gray-700 font-medium">{selected.title}</span></div>
+            <div><span className="block text-xs font-medium text-gray-400 mb-0.5">Status</span>{statusBadge(selected.status)}</div>
+            <div><span className="block text-xs font-medium text-gray-400 mb-0.5">Location</span><span className="text-gray-700">{selected.location || '-'}</span></div>
+            <div><span className="block text-xs font-medium text-gray-400 mb-0.5">Type</span><span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded">{selected.type || '-'}</span></div>
+            <div className="col-span-2"><span className="block text-xs font-medium text-gray-400 mb-0.5">Description</span><p className="text-gray-700 whitespace-pre-wrap">{selected.description || '-'}</p></div>
+            <div><span className="block text-xs font-medium text-gray-400 mb-0.5">Audience</span><span className="text-gray-700">{selected.audience || '-'}</span></div>
+            <div><span className="block text-xs font-medium text-gray-400 mb-0.5">Tags</span><span className="text-gray-700">{selected.tags && selected.tags.length > 0 ? selected.tags.join(', ') : '-'}</span></div>
+            {(selected.latitude || selected.longitude) && (
+              <div><span className="block text-xs font-medium text-gray-400 mb-0.5">Coordinates</span><span className="text-gray-700">{selected.latitude}, {selected.longitude}</span></div>
+            )}
+            <div><span className="block text-xs font-medium text-gray-400 mb-0.5">Event Date</span><span className="text-gray-700">{selected.event_date ? new Date(selected.event_date).toLocaleString() : '-'}</span></div>
+          </div>
+
+          {/* Response counts */}
+          <div className="mt-4 pt-4 border-t border-gray-100">
+            <span className="block text-xs font-medium text-gray-400 mb-2">Responses</span>
+            <div className="flex gap-4">
+              <div className="text-center px-4 py-2 bg-gray-50 rounded-lg">
+                <div className="text-lg font-bold text-gray-900">{selected.interested_count || 0}</div>
+                <div className="text-[10px] text-gray-400 uppercase tracking-wide">Interested</div>
+              </div>
+              <div className="text-center px-4 py-2 bg-gray-50 rounded-lg">
+                <div className="text-lg font-bold text-gray-900">{selected.going_count || 0}</div>
+                <div className="text-[10px] text-gray-400 uppercase tracking-wide">Going</div>
+              </div>
+              <div className="text-center px-4 py-2 bg-gray-50 rounded-lg">
+                <div className="text-lg font-bold text-gray-900">{selected.attended_count || 0}</div>
+                <div className="text-[10px] text-gray-400 uppercase tracking-wide">Attended</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Creator info */}
+          <div className="mt-4 pt-4 border-t border-gray-100">
+            <span className="block text-xs font-medium text-gray-400 mb-2">Creator</span>
+            <div className="flex items-center gap-4 text-sm">
+              <div><span className="text-gray-500">Name:</span> <span className="text-gray-900 font-medium">{selected.creator_name || selected.creator_email || '-'}</span></div>
+              {selected.creator_trust_score !== undefined && (
+                <div><span className="text-gray-500">Trust Score:</span> <span className="text-gray-900 font-medium">{selected.creator_trust_score}</span></div>
+              )}
+              {selected.creator_level !== undefined && (
+                <div><span className="text-gray-500">Level:</span> <span className="text-xs bg-violet-50 text-violet-600 px-2 py-0.5 rounded font-medium">{selected.creator_level}</span></div>
+              )}
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="mt-4 pt-4 border-t border-gray-100 flex flex-wrap items-end gap-3">
+            {selected.status === 'pending' && (
+              <>
+                <button onClick={() => handleApprove(selected)} disabled={actionLoading === selected.id}
+                  className="px-4 py-2 bg-emerald-600 text-white text-xs font-medium rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition">
+                  {actionLoading === selected.id ? 'Processing...' : 'Approve Event'}
+                </button>
+                <div className="flex-1 min-w-[200px] max-w-sm">
+                  <input className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-gray-400" placeholder="Rejection reason..."
+                    value={rejectionReason} onChange={(e) => setRejectionReason(e.target.value)} />
+                </div>
+                <button onClick={() => handleReject(selected)} disabled={actionLoading === selected.id}
+                  className="px-4 py-2 bg-red-600 text-white text-xs font-medium rounded-lg hover:bg-red-700 disabled:opacity-50 transition">
+                  {actionLoading === selected.id ? 'Processing...' : 'Reject Event'}
+                </button>
+              </>
+            )}
+            {selected.status === 'reported' && (
+              <>
+                <div className="text-xs text-orange-600 bg-orange-50 px-3 py-2 rounded-lg flex items-center gap-1.5">
+                  <AlertTriangle size={14} /> {selected.report_count || 0} report(s)
+                </div>
+                <button onClick={() => handleKeep(selected)} disabled={actionLoading === selected.id}
+                  className="px-4 py-2 bg-emerald-600 text-white text-xs font-medium rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition">
+                  Keep Event
+                </button>
+                <button onClick={() => handleDelete(selected)} disabled={actionLoading === selected.id}
+                  className="px-4 py-2 bg-red-600 text-white text-xs font-medium rounded-lg hover:bg-red-700 disabled:opacity-50 transition">
+                  Remove Event
+                </button>
+              </>
+            )}
+            <button onClick={() => handleDelete(selected)} disabled={actionLoading === selected.id}
+              className="px-4 py-2 bg-gray-100 text-gray-600 text-xs font-medium rounded-lg hover:bg-gray-200 disabled:opacity-50 transition">
+              Delete Event
+            </button>
+            <button disabled className="px-4 py-2 bg-gray-100 text-gray-400 text-xs font-medium rounded-lg cursor-not-allowed flex items-center gap-1.5">
+              <Ban size={12} /> Ban Creator
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Categories ───
+function CategoriesPage({ session, showToast }) {
+  const [categories, setCategories] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [formData, setFormData] = useState({ name: '', name_ms: '', icon: '', sort_order: 0 });
+  const [formError, setFormError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const loadCategories = useCallback(() => {
+    apiFetch('/api/event-categories', session)
+      .then((d) => { setCategories(d.categories || []); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, [session]);
+
+  useEffect(() => { loadCategories(); }, [loadCategories]);
+
+  const resetForm = () => { setFormData({ name: '', name_ms: '', icon: '', sort_order: 0 }); setEditingId(null); setShowForm(false); setFormError(''); };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!formData.name.trim()) { setFormError('Name is required'); return; }
+    setSubmitting(true); setFormError('');
+
+    const payload = { name: formData.name.trim(), name_ms: formData.name_ms.trim(), icon: formData.icon.trim(), sort_order: Number(formData.sort_order) || 0 };
+
+    let d;
+    if (editingId) {
+      d = await apiFetch(`/api/event-categories/${editingId}`, session, { method: 'PUT', body: JSON.stringify(payload) });
+    } else {
+      d = await apiFetch('/api/event-categories', session, { method: 'POST', body: JSON.stringify(payload) });
+    }
+
+    if (d.success) {
+      showToast(editingId ? `"${formData.name}" updated` : `"${formData.name}" added`);
+      resetForm();
+      loadCategories();
+    } else setFormError(d.error || 'Failed');
+    setSubmitting(false);
+  };
+
+  const handleEdit = (cat) => {
+    setFormData({ name: cat.name || '', name_ms: cat.name_ms || '', icon: cat.icon || '', sort_order: cat.sort_order || 0 });
+    setEditingId(cat.id);
+    setShowForm(true);
+    setFormError('');
+  };
+
+  const handleToggleActive = async (cat) => {
+    const d = await apiFetch(`/api/event-categories/${cat.id}`, session, { method: 'PUT', body: JSON.stringify({ active: !cat.active }) });
+    if (d.success) { showToast(`"${cat.name}" ${cat.active ? 'deactivated' : 'activated'}`); loadCategories(); }
+    else alert(d.error || 'Failed');
+  };
+
+  const handleDelete = async (cat) => {
+    if (!confirm(`Delete "${cat.name}"?`)) return;
+    const d = await apiFetch(`/api/event-categories/${cat.id}`, session, { method: 'DELETE' });
+    if (d.success) { showToast(`"${cat.name}" deleted`); loadCategories(); }
+    else alert(d.error || 'Failed to delete');
+  };
+
+  if (loading) return <div className="flex justify-center py-20 text-gray-400">Loading...</div>;
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-100">
+      <div className="flex items-center justify-between p-5 border-b border-gray-50">
+        <div className="flex items-center gap-3">
+          <h2 className="text-sm font-semibold text-gray-900">Event Categories</h2>
+          <span className="text-xs text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full">{categories.length}</span>
+        </div>
+        <button onClick={() => { if (showForm && !editingId) { resetForm(); } else { resetForm(); setShowForm(true); } }}
+          className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg transition ${showForm ? 'bg-gray-100 text-gray-600' : 'bg-gray-900 text-white hover:bg-gray-800'}`}>
+          {showForm ? 'Cancel' : <><Plus size={14} /> Add Category</>}
+        </button>
+      </div>
+
+      {showForm && (
+        <div className="p-5 border-b border-gray-50 bg-gray-50/50">
+          <form onSubmit={handleSubmit} className="max-w-lg">
+            <h3 className="text-xs font-semibold text-gray-700 mb-3">{editingId ? 'Edit Category' : 'New Category'}</h3>
+            {formError && <div className="text-red-600 text-xs mb-3 bg-red-50 px-3 py-2 rounded-lg">{formError}</div>}
+            <div className="grid grid-cols-2 gap-3 mb-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Name (EN)</label>
+                <input className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-gray-400" placeholder="e.g. Lecture"
+                  value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} required />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Name (BM)</label>
+                <input className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-gray-400" placeholder="e.g. Ceramah"
+                  value={formData.name_ms} onChange={(e) => setFormData({ ...formData, name_ms: e.target.value })} />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Icon</label>
+                <input className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-gray-400" placeholder="e.g. mosque"
+                  value={formData.icon} onChange={(e) => setFormData({ ...formData, icon: e.target.value })} />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Sort Order</label>
+                <input type="number" className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-gray-400" placeholder="0"
+                  value={formData.sort_order} onChange={(e) => setFormData({ ...formData, sort_order: e.target.value })} />
+              </div>
+            </div>
+            <button type="submit" disabled={submitting} className="px-4 py-2 bg-gray-900 text-white text-xs font-medium rounded-lg hover:bg-gray-800 disabled:opacity-50">
+              {submitting ? 'Saving...' : editingId ? 'Update Category' : 'Add Category'}
+            </button>
+          </form>
+        </div>
+      )}
+
+      {categories.length === 0 ? <div className="text-gray-400 text-center py-12 text-sm">No categories yet</div> : (
+        <table className="w-full">
+          <thead><tr className="border-b border-gray-50">
+            <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Name</th>
+            <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Name (BM)</th>
+            <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Icon</th>
+            <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Sort Order</th>
+            <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Active</th>
+            <th className="px-5 py-3"></th>
+          </tr></thead>
+          <tbody>
+            {categories.map((cat) => (
+              <tr key={cat.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50">
+                <td className="px-5 py-3 text-sm text-gray-900 font-medium">{cat.name}</td>
+                <td className="px-5 py-3 text-sm text-gray-500">{cat.name_ms || '-'}</td>
+                <td className="px-5 py-3"><span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded">{cat.icon || '-'}</span></td>
+                <td className="px-5 py-3 text-sm text-gray-400">{cat.sort_order || 0}</td>
+                <td className="px-5 py-3">
+                  <button onClick={() => handleToggleActive(cat)} className="transition">
+                    {cat.active
+                      ? <span className="text-xs bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded font-medium">Active</span>
+                      : <span className="text-xs bg-gray-100 text-gray-400 px-2 py-0.5 rounded font-medium">Inactive</span>}
+                  </button>
+                </td>
+                <td className="px-5 py-3 text-right">
+                  <div className="flex items-center justify-end gap-2">
+                    <button onClick={() => handleEdit(cat)} className="text-gray-400 hover:text-gray-600 transition"><Edit3 size={14} /></button>
+                    <button onClick={() => handleDelete(cat)} className="text-red-400 hover:text-red-600 transition"><Trash2 size={14} /></button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
+
 // ─── Navigation config ───
 const navSections = [
   {
@@ -843,6 +1258,13 @@ const navSections = [
     ],
   },
   {
+    label: 'Events',
+    items: [
+      { id: 'events', label: 'Events', icon: CalendarDays },
+      { id: 'categories', label: 'Categories', icon: Tag },
+    ],
+  },
+  {
     label: 'Engagement',
     items: [
       { id: 'notifications', label: 'Notifications', icon: Bell },
@@ -857,6 +1279,8 @@ const pages = {
   team: TeamPage,
   backgrounds: BackgroundsPage,
   azan: AzanSoundsPage,
+  events: EventsPage,
+  categories: CategoriesPage,
   notifications: NotificationsPage,
   feedback: FeedbackPage,
 };
