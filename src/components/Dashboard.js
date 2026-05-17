@@ -833,7 +833,7 @@ function EventsPage({ session, showToast }) {
   const [actionLoading, setActionLoading] = useState(null);
 
   const loadEvents = useCallback(() => {
-    apiFetch('/api/events', session)
+    apiFetch('/api/events?status=all&limit=100', session)
       .then((d) => { setEvents(d.events || []); setLoading(false); })
       .catch(() => setLoading(false));
   }, [session]);
@@ -938,9 +938,9 @@ function EventsPage({ session, showToast }) {
                   <tr key={evt.id} onClick={() => { setSelected(selected?.id === evt.id ? null : evt); setRejectionReason(''); }}
                     className={`border-b border-gray-50 last:border-0 hover:bg-gray-50/50 cursor-pointer ${selected?.id === evt.id ? 'bg-gray-50/80' : ''}`}>
                     <td className="px-5 py-3 text-sm text-gray-900 font-medium max-w-[200px] truncate">{evt.title}</td>
-                    <td className="px-5 py-3 text-sm text-gray-500 max-w-[150px] truncate">{evt.location || '-'}</td>
-                    <td className="px-5 py-3"><span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded">{evt.type || '-'}</span></td>
-                    <td className="px-5 py-3 text-sm text-gray-500">{evt.creator_name || evt.creator_email || '-'}</td>
+                    <td className="px-5 py-3 text-sm text-gray-500 max-w-[150px] truncate">{evt.location_name || '-'}</td>
+                    <td className="px-5 py-3"><span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded">{evt.event_type || '-'}</span></td>
+                    <td className="px-5 py-3 text-sm text-gray-500">{evt.user_id ? evt.user_id.slice(0, 8) + '...' : '-'}</td>
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-1.5">
                         {statusBadge(evt.status)}
@@ -949,7 +949,7 @@ function EventsPage({ session, showToast }) {
                         )}
                       </div>
                     </td>
-                    <td className="px-5 py-3 text-sm text-gray-400">{evt.event_date ? new Date(evt.event_date).toLocaleDateString() : '-'}</td>
+                    <td className="px-5 py-3 text-sm text-gray-400">{evt.start_date ? new Date(evt.start_date).toLocaleDateString() : '-'}</td>
                     <td className="px-5 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center justify-end gap-1.5">
                         {evt.status === 'pending' && (
@@ -996,15 +996,15 @@ function EventsPage({ session, showToast }) {
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div><span className="block text-xs font-medium text-gray-400 mb-0.5">Title</span><span className="text-gray-700 font-medium">{selected.title}</span></div>
             <div><span className="block text-xs font-medium text-gray-400 mb-0.5">Status</span>{statusBadge(selected.status)}</div>
-            <div><span className="block text-xs font-medium text-gray-400 mb-0.5">Location</span><span className="text-gray-700">{selected.location || '-'}</span></div>
-            <div><span className="block text-xs font-medium text-gray-400 mb-0.5">Type</span><span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded">{selected.type || '-'}</span></div>
+            <div><span className="block text-xs font-medium text-gray-400 mb-0.5">Location</span><span className="text-gray-700">{selected.location_name || '-'}</span></div>
+            <div><span className="block text-xs font-medium text-gray-400 mb-0.5">Type</span><span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded">{selected.event_type || '-'}</span></div>
             <div className="col-span-2"><span className="block text-xs font-medium text-gray-400 mb-0.5">Description</span><p className="text-gray-700 whitespace-pre-wrap">{selected.description || '-'}</p></div>
             <div><span className="block text-xs font-medium text-gray-400 mb-0.5">Audience</span><span className="text-gray-700">{selected.audience || '-'}</span></div>
             <div><span className="block text-xs font-medium text-gray-400 mb-0.5">Tags</span><span className="text-gray-700">{selected.tags && selected.tags.length > 0 ? selected.tags.join(', ') : '-'}</span></div>
             {(selected.latitude || selected.longitude) && (
               <div><span className="block text-xs font-medium text-gray-400 mb-0.5">Coordinates</span><span className="text-gray-700">{selected.latitude}, {selected.longitude}</span></div>
             )}
-            <div><span className="block text-xs font-medium text-gray-400 mb-0.5">Event Date</span><span className="text-gray-700">{selected.event_date ? new Date(selected.event_date).toLocaleString() : '-'}</span></div>
+            <div><span className="block text-xs font-medium text-gray-400 mb-0.5">Event Date</span><span className="text-gray-700">{selected.start_date ? new Date(selected.start_date).toLocaleString() : '-'}</span></div>
           </div>
 
           {/* Response counts */}
@@ -1030,13 +1030,7 @@ function EventsPage({ session, showToast }) {
           <div className="mt-4 pt-4 border-t border-gray-100">
             <span className="block text-xs font-medium text-gray-400 mb-2">Creator</span>
             <div className="flex items-center gap-4 text-sm">
-              <div><span className="text-gray-500">Name:</span> <span className="text-gray-900 font-medium">{selected.creator_name || selected.creator_email || '-'}</span></div>
-              {selected.creator_trust_score !== undefined && (
-                <div><span className="text-gray-500">Trust Score:</span> <span className="text-gray-900 font-medium">{selected.creator_trust_score}</span></div>
-              )}
-              {selected.creator_level !== undefined && (
-                <div><span className="text-gray-500">Level:</span> <span className="text-xs bg-violet-50 text-violet-600 px-2 py-0.5 rounded font-medium">{selected.creator_level}</span></div>
-              )}
+              <div><span className="text-gray-500">User ID:</span> <span className="text-gray-900 font-medium font-mono text-xs">{selected.user_id || '-'}</span></div>
             </div>
           </div>
 
