@@ -25,6 +25,7 @@ const navItems = [
   { id: 'azan', label: 'Azan Sounds' },
   { id: 'content', label: 'Content' },
   { id: 'notifications', label: 'Notifications' },
+  { id: 'feedback', label: 'Feedback' },
   { id: 'analytics', label: 'Analytics' },
   { id: 'settings', label: 'Settings' },
 ];
@@ -41,6 +42,7 @@ async function apiFetch(path, session, options = {}) {
 function DashboardPage({ session }) {
   const [firebaseStats, setFirebaseStats] = useState(null);
   const [apiStats, setApiStats] = useState(null);
+  const [pendingFeedback, setPendingFeedback] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -52,6 +54,7 @@ function DashboardPage({ session }) {
   }, []);
 
   useEffect(() => { apiFetch('/api/admin/stats', session).then(setApiStats).catch(() => {}); }, [session]);
+  useEffect(() => { apiFetch('/api/feedback', session).then((d) => { setPendingFeedback((d.feedback || []).filter((f) => f.status === 'pending').length); }).catch(() => {}); }, [session]);
 
   const fmt = (n) => (n || 0).toLocaleString();
   if (loading) return <p style={{ color: '#999', padding: '40px', textAlign: 'center' }}>Loading...</p>;
@@ -60,7 +63,7 @@ function DashboardPage({ session }) {
     { label: 'Customers', value: fmt(apiStats?.totalCustomers) },
     { label: 'Admins', value: fmt(apiStats?.totalAdmins) },
     { label: 'Downloads', value: fmt(firebaseStats?.downloads) },
-    { label: 'Feedback', value: fmt(firebaseStats?.feedback) },
+    { label: 'Pending Feedback', value: fmt(pendingFeedback) },
   ];
 
   return (
@@ -692,6 +695,128 @@ function NotificationsPage({ session }) {
   );
 }
 
+// ─── Feedback ───
+function FeedbackPage({ session }) {
+  const [feedback, setFeedback] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState('all');
+  const [selected, setSelected] = useState(null);
+  const [resolving, setResolving] = useState(false);
+
+  const loadFeedback = useCallback(() => {
+    apiFetch('/api/feedback', session)
+      .then((d) => { setFeedback(d.feedback || []); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, [session]);
+
+  useEffect(() => { loadFeedback(); }, [loadFeedback]);
+
+  const handleResolve = async (item) => {
+    if (!confirm('Mark this feedback as resolved? The user will be notified.')) return;
+    setResolving(true);
+    const d = await apiFetch(`/api/feedback/${item.id}`, session, { method: 'PUT', body: JSON.stringify({ status: 'resolved' }) });
+    if (d.success) { setSelected(null); loadFeedback(); }
+    else alert(d.error || 'Failed to resolve');
+    setResolving(false);
+  };
+
+  const filtered = filter === 'all' ? feedback : feedback.filter((f) => f.status === filter);
+  const truncate = (str, len = 60) => str && str.length > len ? str.substring(0, len) + '...' : str || '-';
+
+  if (loading) return <p style={{ color: '#999', padding: '40px', textAlign: 'center' }}>Loading...</p>;
+
+  return (
+    <>
+      <div style={s.card}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '15px', fontWeight: '600', color: '#111' }}>Feedback & Bug Reports</span>
+            <span style={{ ...s.badge(), fontSize: '12px' }}>{filtered.length}</span>
+          </div>
+        </div>
+
+        {/* Filter tabs */}
+        <div style={{ display: 'flex', gap: '6px', marginBottom: '16px' }}>
+          {[{ value: 'all', label: 'All' }, { value: 'pending', label: 'Pending' }, { value: 'resolved', label: 'Resolved' }].map((f) => (
+            <button key={f.value} type="button" onClick={() => setFilter(f.value)}
+              style={{ ...s.btnOutline, background: filter === f.value ? '#111' : '#fff', color: filter === f.value ? '#fff' : '#111', padding: '6px 14px', fontSize: '12px' }}>
+              {f.label}
+            </button>
+          ))}
+        </div>
+
+        {filtered.length === 0 ? <p style={{ color: '#999', textAlign: 'center', padding: '32px' }}>No feedback yet</p> : (
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead><tr><th style={s.th}>Email</th><th style={s.th}>Feature</th><th style={s.th}>Message</th><th style={s.th}>Images</th><th style={s.th}>Status</th><th style={s.th}>Date</th><th style={s.th}>Action</th></tr></thead>
+            <tbody>
+              {filtered.map((item) => (
+                <tr key={item.id} onClick={() => setSelected(selected?.id === item.id ? null : item)} style={{ cursor: 'pointer' }}>
+                  <td style={s.td}>{item.email || '-'}</td>
+                  <td style={s.td}><span style={s.badge()}>{item.feature || '-'}</span></td>
+                  <td style={{ ...s.td, maxWidth: '240px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{truncate(item.message)}</td>
+                  <td style={s.td}>{item.images && item.images.length > 0 ? `${item.images.length} image${item.images.length > 1 ? 's' : ''}` : '-'}</td>
+                  <td style={s.td}>
+                    <span style={{ padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: '500', background: item.status === 'pending' ? '#fff7ed' : '#f0fdf4', color: item.status === 'pending' ? '#c2410c' : '#166534' }}>
+                      {item.status}
+                    </span>
+                  </td>
+                  <td style={s.td}>{new Date(item.created_at).toLocaleDateString()}</td>
+                  <td style={s.td}>
+                    {item.status === 'pending' ? (
+                      <button style={s.btn} onClick={(e) => { e.stopPropagation(); handleResolve(item); }}>Resolve</button>
+                    ) : (
+                      <span style={{ fontSize: '12px', color: '#166534' }}>Resolved</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {/* Detail section */}
+      {selected && (
+        <div style={s.card}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <span style={{ fontSize: '15px', fontWeight: '600', color: '#111' }}>Feedback Detail</span>
+            <button style={s.btnOutline} onClick={() => setSelected(null)}>Close</button>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div><label style={s.label}>Email</label><div style={{ fontSize: '13px', color: '#333' }}>{selected.email || '-'}</div></div>
+            <div><label style={s.label}>Feature</label><div><span style={s.badge()}>{selected.feature || '-'}</span></div></div>
+            <div><label style={s.label}>Message</label><div style={{ fontSize: '13px', color: '#333', whiteSpace: 'pre-wrap' }}>{selected.message || '-'}</div></div>
+            <div><label style={s.label}>Submitted</label><div style={{ fontSize: '13px', color: '#333' }}>{new Date(selected.created_at).toLocaleString()}</div></div>
+            {selected.status === 'resolved' && (
+              <>
+                {selected.resolved_at && <div><label style={s.label}>Resolved</label><div style={{ fontSize: '13px', color: '#333' }}>{new Date(selected.resolved_at).toLocaleString()}</div></div>}
+                {selected.resolved_by && <div><label style={s.label}>Resolved By</label><div style={{ fontSize: '13px', color: '#333' }}>{selected.resolved_by}</div></div>}
+              </>
+            )}
+            {selected.images && selected.images.length > 0 && (
+              <div>
+                <label style={s.label}>Images</label>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '4px' }}>
+                  {selected.images.map((img, idx) => (
+                    <a key={idx} href={img} target="_blank" rel="noopener noreferrer" style={{ display: 'block', width: '80px', height: '80px', borderRadius: '6px', overflow: 'hidden', border: '1px solid #eee' }}>
+                      <img src={img} alt={`Attachment ${idx + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+            {selected.status === 'pending' && (
+              <button style={{ ...s.btn, alignSelf: 'flex-start', opacity: resolving ? 0.6 : 1 }} disabled={resolving} onClick={() => handleResolve(selected)}>
+                {resolving ? 'Resolving...' : 'Mark as Resolved'}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 // ─── Analytics ───
 function AnalyticsPage() {
   const data = [
@@ -731,7 +856,7 @@ function SettingsPage() {
 }
 
 // ─── Layout ───
-const pages = { dashboard: DashboardPage, customers: CustomersPage, team: TeamPage, backgrounds: BackgroundsPage, azan: AzanSoundsPage, content: ContentPage, notifications: NotificationsPage, analytics: AnalyticsPage, settings: SettingsPage };
+const pages = { dashboard: DashboardPage, customers: CustomersPage, team: TeamPage, backgrounds: BackgroundsPage, azan: AzanSoundsPage, content: ContentPage, notifications: NotificationsPage, feedback: FeedbackPage, analytics: AnalyticsPage, settings: SettingsPage };
 
 export default function Dashboard({ onLogout, session }) {
   const [activePage, setActivePage] = useState('dashboard');
