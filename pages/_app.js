@@ -1,4 +1,5 @@
 import Head from 'next/head';
+import { Analytics } from '@vercel/analytics/react';
 import '../src/styles/globals.css';
 
 export default function App({ Component, pageProps }) {
@@ -10,6 +11,7 @@ export default function App({ Component, pageProps }) {
         <title>HidayahMY Admin</title>
       </Head>
       <Component {...pageProps} />
+      <Analytics />
     </>
   );
 }
