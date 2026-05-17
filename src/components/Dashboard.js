@@ -754,7 +754,7 @@ function FeedbackPage({ session }) {
                   <td style={s.td}>{item.email || '-'}</td>
                   <td style={s.td}><span style={s.badge()}>{item.feature || '-'}</span></td>
                   <td style={{ ...s.td, maxWidth: '240px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{truncate(item.message)}</td>
-                  <td style={s.td}>{item.images && item.images.length > 0 ? `${item.images.length} image${item.images.length > 1 ? 's' : ''}` : '-'}</td>
+                  <td style={s.td}>{item.image_urls && item.image_urls.length > 0 ? `${item.image_urls.length} image${item.image_urls.length > 1 ? 's' : ''}` : '-'}</td>
                   <td style={s.td}>
                     <span style={{ padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: '500', background: item.status === 'pending' ? '#fff7ed' : '#f0fdf4', color: item.status === 'pending' ? '#c2410c' : '#166534' }}>
                       {item.status}
@@ -793,12 +793,12 @@ function FeedbackPage({ session }) {
                 {selected.resolved_by && <div><label style={s.label}>Resolved By</label><div style={{ fontSize: '13px', color: '#333' }}>{selected.resolved_by}</div></div>}
               </>
             )}
-            {selected.images && selected.images.length > 0 && (
+            {selected.image_urls && selected.image_urls.length > 0 && (
               <div>
                 <label style={s.label}>Images</label>
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '4px' }}>
-                  {selected.images.map((img, idx) => (
-                    <a key={idx} href={img} target="_blank" rel="noopener noreferrer" style={{ display: 'block', width: '80px', height: '80px', borderRadius: '6px', overflow: 'hidden', border: '1px solid #eee' }}>
+                  {selected.image_urls.map((img, idx) => (
+                    <a key={idx} href={img} target="_blank" rel="noopener noreferrer" style={{ display: 'block', width: '160px', height: '160px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #eee' }}>
                       <img src={img} alt={`Attachment ${idx + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     </a>
                   ))}
