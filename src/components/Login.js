@@ -38,43 +38,45 @@ export default function Login({ onLogin }) {
   };
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fff', padding: '20px' }}>
-      <div style={{ width: '100%', maxWidth: '360px' }}>
-        <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-          <img src="/hidayahicon.png" alt="HidayahMY" style={{ width: '48px', height: '48px', borderRadius: '12px', marginBottom: '16px' }} />
-          <h1 style={{ fontSize: '20px', fontWeight: '600', color: '#111', margin: '0 0 4px' }}>HidayahMY</h1>
-          <p style={{ fontSize: '13px', color: '#999', margin: 0 }}>Admin Panel</p>
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-5">
+      <div className="w-full max-w-sm">
+        <div className="text-center mb-10">
+          <img src="/hidayahicon.png" alt="HidayahMY" className="w-12 h-12 rounded-xl mx-auto mb-4" />
+          <h1 className="text-xl font-bold text-gray-900">HidayahMY</h1>
+          <p className="text-sm text-gray-400 mt-1">Admin Panel</p>
         </div>
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {error && <div style={{ background: '#fafafa', color: '#c00', padding: '10px 14px', borderRadius: '6px', fontSize: '13px', border: '1px solid #eee' }}>{error}</div>}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {error && (
+            <div className="bg-red-50 text-red-600 px-4 py-3 rounded-lg text-sm border border-red-100">{error}</div>
+          )}
 
           <div>
-            <label style={{ fontSize: '12px', fontWeight: '500', color: '#666', marginBottom: '6px', display: 'block' }}>Email</label>
+            <label className="block text-xs font-medium text-gray-500 mb-1.5">Email</label>
             <input
               type="email" value={email} onChange={(e) => setEmail(e.target.value)}
               placeholder="admin@hidayahmy.com" required
-              style={{ padding: '10px 12px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '14px', outline: 'none', width: '100%', boxSizing: 'border-box' }}
+              className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm outline-none focus:border-gray-400 transition"
             />
           </div>
 
           <div>
-            <label style={{ fontSize: '12px', fontWeight: '500', color: '#666', marginBottom: '6px', display: 'block' }}>Password</label>
-            <div style={{ position: 'relative' }}>
+            <label className="block text-xs font-medium text-gray-500 mb-1.5">Password</label>
+            <div className="relative">
               <input
                 type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter password" required
-                style={{ padding: '10px 12px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '14px', outline: 'none', width: '100%', boxSizing: 'border-box', paddingRight: '40px' }}
+                className="w-full px-3 py-2.5 pr-14 border border-gray-200 rounded-lg text-sm outline-none focus:border-gray-400 transition"
               />
               <button type="button" onClick={() => setShowPassword(!showPassword)}
-                style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', color: '#999' }}>
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 hover:text-gray-600">
                 {showPassword ? 'Hide' : 'Show'}
               </button>
             </div>
           </div>
 
           <button type="submit" disabled={loading}
-            style={{ padding: '10px', background: '#111', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '14px', fontWeight: '500', cursor: 'pointer', marginTop: '4px', opacity: loading ? 0.6 : 1 }}>
+            className="w-full py-2.5 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800 disabled:opacity-50 transition mt-2">
             {loading ? 'Signing in...' : 'Sign In'}
           </button>
         </form>

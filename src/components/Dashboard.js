@@ -2,33 +2,13 @@ import { useState, useEffect, useCallback } from 'react';
 import { db } from '../lib/firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { supabase } from '../lib/supabase';
+import {
+  LayoutDashboard, Users, ShieldCheck, Image, Volume2,
+  Bell, MessageSquareText, LogOut, ChevronDown, ChevronRight,
+  Plus, Trash2, Upload, Search, Check, X, Play,
+} from 'lucide-react';
 
 const API_URL = 'https://api.hidayahmy.com';
-
-const s = {
-  input: { padding: '8px 12px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '14px', outline: 'none', width: '100%', boxSizing: 'border-box' },
-  btn: { padding: '8px 16px', background: '#111', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '13px', fontWeight: '500', cursor: 'pointer' },
-  btnOutline: { padding: '8px 16px', background: '#fff', color: '#111', border: '1px solid #ddd', borderRadius: '6px', fontSize: '13px', fontWeight: '500', cursor: 'pointer' },
-  btnDanger: { padding: '6px 12px', background: '#fff', color: '#c00', border: '1px solid #e5e5e5', borderRadius: '6px', fontSize: '12px', fontWeight: '500', cursor: 'pointer' },
-  card: { background: '#fff', border: '1px solid #e5e5e5', borderRadius: '8px', padding: '20px', marginBottom: '20px' },
-  th: { textAlign: 'left', padding: '8px 12px', fontSize: '11px', fontWeight: '600', color: '#999', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid #eee' },
-  td: { padding: '10px 12px', fontSize: '13px', borderBottom: '1px solid #f5f5f5', color: '#333' },
-  badge: (t) => ({ padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: '500', background: '#f5f5f5', color: '#666' }),
-  label: { fontSize: '12px', fontWeight: '500', color: '#666', marginBottom: '4px', display: 'block' },
-};
-
-const navItems = [
-  { id: 'dashboard', label: 'Dashboard' },
-  { id: 'customers', label: 'Customers' },
-  { id: 'team', label: 'Team' },
-  { id: 'backgrounds', label: 'Backgrounds' },
-  { id: 'azan', label: 'Azan Sounds' },
-  { id: 'content', label: 'Content' },
-  { id: 'notifications', label: 'Notifications' },
-  { id: 'feedback', label: 'Feedback' },
-  { id: 'analytics', label: 'Analytics' },
-  { id: 'settings', label: 'Settings' },
-];
 
 async function apiFetch(path, session, options = {}) {
   const res = await fetch(`${API_URL}${path}`, {
@@ -36,6 +16,18 @@ async function apiFetch(path, session, options = {}) {
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}`, ...options.headers },
   });
   return res.json();
+}
+
+// ─── Toast ───
+function Toast({ message, type = 'success', onClose }) {
+  useEffect(() => { const t = setTimeout(onClose, 4000); return () => clearTimeout(t); }, [onClose]);
+  return (
+    <div className={`fixed top-4 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg text-sm font-medium transition-all ${type === 'success' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
+      {type === 'success' ? <Check size={16} /> : <X size={16} />}
+      {message}
+      <button onClick={onClose} className="ml-2 opacity-50 hover:opacity-100"><X size={14} /></button>
+    </div>
+  );
 }
 
 // ─── Dashboard ───
@@ -57,32 +49,35 @@ function DashboardPage({ session }) {
   useEffect(() => { apiFetch('/api/feedback', session).then((d) => { setPendingFeedback((d.feedback || []).filter((f) => f.status === 'pending').length); }).catch(() => {}); }, [session]);
 
   const fmt = (n) => (n || 0).toLocaleString();
-  if (loading) return <p style={{ color: '#999', padding: '40px', textAlign: 'center' }}>Loading...</p>;
+  if (loading) return <div className="flex justify-center py-20 text-gray-400">Loading...</div>;
 
   const stats = [
-    { label: 'Customers', value: fmt(apiStats?.totalCustomers) },
-    { label: 'Admins', value: fmt(apiStats?.totalAdmins) },
-    { label: 'Downloads', value: fmt(firebaseStats?.downloads) },
-    { label: 'Pending Feedback', value: fmt(pendingFeedback) },
+    { label: 'Total Customers', value: fmt(apiStats?.totalCustomers), color: 'text-blue-600', bg: 'bg-blue-50', icon: Users },
+    { label: 'Admin Team', value: fmt(apiStats?.totalAdmins), color: 'text-violet-600', bg: 'bg-violet-50', icon: ShieldCheck },
+    { label: 'App Downloads', value: fmt(firebaseStats?.downloads), color: 'text-emerald-600', bg: 'bg-emerald-50', icon: LayoutDashboard },
+    { label: 'Pending Feedback', value: fmt(pendingFeedback), color: 'text-amber-600', bg: 'bg-amber-50', icon: MessageSquareText },
   ];
 
   return (
-    <>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((st) => (
-          <div key={st.label} style={s.card}>
-            <div style={{ fontSize: '11px', fontWeight: '500', color: '#999', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{st.label}</div>
-            <div style={{ fontSize: '28px', fontWeight: '700', color: '#111', marginTop: '4px' }}>{st.value}</div>
+          <div key={st.label} className="bg-white rounded-xl border border-gray-100 p-5 hover:shadow-sm transition-shadow">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">{st.label}</span>
+              <div className={`${st.bg} ${st.color} p-2 rounded-lg`}><st.icon size={18} /></div>
+            </div>
+            <div className="text-3xl font-bold text-gray-900">{st.value}</div>
           </div>
         ))}
       </div>
-      <div style={s.card}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: firebaseStats ? '#22c55e' : '#ef4444' }} />
-          <span style={{ fontSize: '13px', color: '#666' }}>{firebaseStats ? 'Firebase connected' : 'Firebase not connected'}</span>
+      <div className="bg-white rounded-xl border border-gray-100 p-5">
+        <div className="flex items-center gap-2">
+          <div className={`w-2 h-2 rounded-full ${firebaseStats ? 'bg-emerald-500' : 'bg-red-500'}`} />
+          <span className="text-sm text-gray-500">{firebaseStats ? 'Firebase connected' : 'Firebase not connected'}</span>
         </div>
       </div>
-    </>
+    </div>
   );
 }
 
@@ -90,6 +85,7 @@ function DashboardPage({ session }) {
 function CustomersPage({ session }) {
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
     apiFetch('/api/admin/list-users?role=customer', session)
@@ -97,41 +93,57 @@ function CustomersPage({ session }) {
       .catch(() => setLoading(false));
   }, [session]);
 
-  if (loading) return <p style={{ color: '#999', padding: '40px', textAlign: 'center' }}>Loading...</p>;
+  if (loading) return <div className="flex justify-center py-20 text-gray-400">Loading...</div>;
+
+  const filtered = search
+    ? customers.filter((u) => (u.name || '').toLowerCase().includes(search.toLowerCase()) || (u.email || '').toLowerCase().includes(search.toLowerCase()))
+    : customers;
 
   return (
-    <div style={s.card}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
-        <span style={{ fontSize: '15px', fontWeight: '600', color: '#111' }}>Customers</span>
-        <span style={{ fontSize: '13px', color: '#999' }}>{customers.length}</span>
+    <div className="bg-white rounded-xl border border-gray-100">
+      <div className="flex items-center justify-between p-5 border-b border-gray-50">
+        <div className="flex items-center gap-3">
+          <h2 className="text-sm font-semibold text-gray-900">All Customers</h2>
+          <span className="text-xs text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full">{filtered.length}</span>
+        </div>
+        <div className="relative">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300" />
+          <input className="pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-gray-400 w-56" placeholder="Search..." value={search} onChange={(e) => setSearch(e.target.value)} />
+        </div>
       </div>
-      {customers.length === 0 ? <p style={{ color: '#999', textAlign: 'center', padding: '32px' }}>No customers yet</p> : (
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead><tr><th style={s.th}>Name</th><th style={s.th}>Email</th><th style={s.th}>Provider</th><th style={s.th}>Joined</th></tr></thead>
-          <tbody>
-            {customers.map((u) => (
-              <tr key={u.id}>
-                <td style={s.td}>{u.name || '-'}</td>
-                <td style={s.td}>{u.email}</td>
-                <td style={s.td}><span style={s.badge()}>{u.provider || 'email'}</span></td>
-                <td style={s.td}>{new Date(u.created_at).toLocaleDateString()}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      {filtered.length === 0 ? <p className="text-gray-400 text-center py-12 text-sm">No customers found</p> : (
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead><tr className="border-b border-gray-50">
+              <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Name</th>
+              <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Email</th>
+              <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Provider</th>
+              <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Joined</th>
+            </tr></thead>
+            <tbody>
+              {filtered.map((u) => (
+                <tr key={u.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50">
+                  <td className="px-5 py-3 text-sm text-gray-900 font-medium">{u.name || '-'}</td>
+                  <td className="px-5 py-3 text-sm text-gray-500">{u.email}</td>
+                  <td className="px-5 py-3"><span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded">{u.provider || 'email'}</span></td>
+                  <td className="px-5 py-3 text-sm text-gray-400">{new Date(u.created_at).toLocaleDateString()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );
 }
 
 // ─── Team ───
-function TeamPage({ session }) {
+function TeamPage({ session, showToast }) {
   const [admins, setAdmins] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({ name: '', email: '', password: '' });
   const [formError, setFormError] = useState('');
-  const [formSuccess, setFormSuccess] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   const loadAdmins = useCallback(() => {
@@ -143,9 +155,9 @@ function TeamPage({ session }) {
   useEffect(() => { loadAdmins(); }, [loadAdmins]);
 
   const handleAdd = async (e) => {
-    e.preventDefault(); setFormError(''); setFormSuccess(''); setSubmitting(true);
+    e.preventDefault(); setFormError(''); setSubmitting(true);
     const d = await apiFetch('/api/admin/add-user', session, { method: 'POST', body: JSON.stringify(formData) });
-    if (d.success) { setFormSuccess(`Added "${formData.name || formData.email}"`); setFormData({ name: '', email: '', password: '' }); setShowForm(false); loadAdmins(); }
+    if (d.success) { showToast(`Added "${formData.name || formData.email}"`); setFormData({ name: '', email: '', password: '' }); setShowForm(false); loadAdmins(); }
     else setFormError(d.error || 'Failed');
     setSubmitting(false);
   };
@@ -153,56 +165,66 @@ function TeamPage({ session }) {
   const handleRemove = async (user) => {
     if (!confirm(`Remove ${user.email}?`)) return;
     const d = await apiFetch('/api/admin/remove-user', session, { method: 'DELETE', body: JSON.stringify({ user_id: user.id }) });
-    if (d.success) loadAdmins(); else alert(d.error || 'Failed');
+    if (d.success) { showToast(`Removed ${user.email}`); loadAdmins(); } else alert(d.error || 'Failed');
   };
 
-  if (loading) return <p style={{ color: '#999', padding: '40px', textAlign: 'center' }}>Loading...</p>;
+  if (loading) return <div className="flex justify-center py-20 text-gray-400">Loading...</div>;
 
   return (
-    <>
-      {formSuccess && <div style={{ background: '#f0fdf4', color: '#166534', padding: '10px 14px', borderRadius: '6px', marginBottom: '16px', fontSize: '13px', border: '1px solid #dcfce7' }}>{formSuccess}</div>}
-      <div style={s.card}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
-          <span style={{ fontSize: '15px', fontWeight: '600', color: '#111' }}>Admin Team</span>
-          <button style={showForm ? s.btnOutline : s.btn} onClick={() => { setShowForm(!showForm); setFormError(''); }}>
-            {showForm ? 'Cancel' : 'Add Admin'}
-          </button>
-        </div>
-
-        {showForm && (
-          <form onSubmit={handleAdd} style={{ marginBottom: '20px', padding: '16px', background: '#fafafa', borderRadius: '6px', border: '1px solid #eee' }}>
-            {formError && <div style={{ color: '#c00', padding: '8px', fontSize: '13px', marginBottom: '8px' }}>{formError}</div>}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginBottom: '12px' }}>
-              <input style={s.input} placeholder="Name" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
-              <input style={s.input} placeholder="Email" type="email" required value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
-              <input style={s.input} placeholder="Password" type="password" required minLength={6} value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} />
-            </div>
-            <button type="submit" style={{ ...s.btn, opacity: submitting ? 0.6 : 1 }} disabled={submitting}>{submitting ? 'Adding...' : 'Add'}</button>
-          </form>
-        )}
-
-        {admins.length === 0 ? <p style={{ color: '#999', textAlign: 'center', padding: '32px' }}>No admins yet</p> : (
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead><tr><th style={s.th}>Name</th><th style={s.th}>Email</th><th style={s.th}>Role</th><th style={s.th}>Added</th><th style={s.th}></th></tr></thead>
-            <tbody>
-              {admins.map((u) => (
-                <tr key={u.id}>
-                  <td style={s.td}>{u.name || '-'}</td><td style={s.td}>{u.email}</td>
-                  <td style={s.td}><span style={s.badge()}>admin</span></td>
-                  <td style={s.td}>{new Date(u.created_at).toLocaleDateString()}</td>
-                  <td style={s.td}>{u.email !== session?.user?.email ? <button style={s.btnDanger} onClick={() => handleRemove(u)}>Remove</button> : <span style={{ fontSize: '12px', color: '#999' }}>You</span>}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+    <div className="bg-white rounded-xl border border-gray-100">
+      <div className="flex items-center justify-between p-5 border-b border-gray-50">
+        <h2 className="text-sm font-semibold text-gray-900">Admin Team</h2>
+        <button onClick={() => { setShowForm(!showForm); setFormError(''); }} className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg transition ${showForm ? 'bg-gray-100 text-gray-600' : 'bg-gray-900 text-white hover:bg-gray-800'}`}>
+          {showForm ? 'Cancel' : <><Plus size={14} /> Add Admin</>}
+        </button>
       </div>
-    </>
+
+      {showForm && (
+        <div className="p-5 border-b border-gray-50 bg-gray-50/50">
+          <form onSubmit={handleAdd}>
+            {formError && <div className="text-red-600 text-xs mb-3 bg-red-50 px-3 py-2 rounded-lg">{formError}</div>}
+            <div className="grid grid-cols-3 gap-3 mb-3">
+              <input className="px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-gray-400" placeholder="Name" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
+              <input className="px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-gray-400" placeholder="Email" type="email" required value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
+              <input className="px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-gray-400" placeholder="Password" type="password" required minLength={6} value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} />
+            </div>
+            <button type="submit" disabled={submitting} className="px-4 py-2 bg-gray-900 text-white text-xs font-medium rounded-lg hover:bg-gray-800 disabled:opacity-50">{submitting ? 'Adding...' : 'Add Admin'}</button>
+          </form>
+        </div>
+      )}
+
+      {admins.length === 0 ? <p className="text-gray-400 text-center py-12 text-sm">No admins yet</p> : (
+        <table className="w-full">
+          <thead><tr className="border-b border-gray-50">
+            <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Name</th>
+            <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Email</th>
+            <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Role</th>
+            <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Added</th>
+            <th className="px-5 py-3"></th>
+          </tr></thead>
+          <tbody>
+            {admins.map((u) => (
+              <tr key={u.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50">
+                <td className="px-5 py-3 text-sm text-gray-900 font-medium">{u.name || '-'}</td>
+                <td className="px-5 py-3 text-sm text-gray-500">{u.email}</td>
+                <td className="px-5 py-3"><span className="text-xs bg-violet-50 text-violet-600 px-2 py-0.5 rounded">admin</span></td>
+                <td className="px-5 py-3 text-sm text-gray-400">{new Date(u.created_at).toLocaleDateString()}</td>
+                <td className="px-5 py-3 text-right">
+                  {u.email !== session?.user?.email
+                    ? <button onClick={() => handleRemove(u)} className="text-red-500 hover:text-red-700 transition"><Trash2 size={14} /></button>
+                    : <span className="text-xs text-gray-300">You</span>}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
   );
 }
 
 // ─── Backgrounds ───
-function BackgroundsPage({ session }) {
+function BackgroundsPage({ session, showToast }) {
   const [backgrounds, setBackgrounds] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -213,7 +235,6 @@ function BackgroundsPage({ session }) {
   const [imagePreview, setImagePreview] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
   const [filter, setFilter] = useState('all');
 
   const loadBackgrounds = useCallback(() => {
@@ -237,12 +258,11 @@ function BackgroundsPage({ session }) {
     e.preventDefault();
     if (!name.trim() || !imageFile) { setError('Name and image are required'); return; }
     if (!catDashboard && !catPrayer) { setError('Select at least one display location'); return; }
-    setUploading(true); setError(''); setSuccess('');
+    setUploading(true); setError('');
 
     const category = catDashboard && catPrayer ? 'both' : catDashboard ? 'dashboard' : 'prayer';
 
     try {
-      // Upload directly to Supabase Storage
       const ext = imageFile.name.split('.').pop();
       const fileName = `${category}/${Date.now()}_${name.trim().replace(/\s+/g, '_').toLowerCase()}.${ext}`;
 
@@ -252,17 +272,15 @@ function BackgroundsPage({ session }) {
 
       if (uploadError) { setError(uploadError.message); setUploading(false); return; }
 
-      // Get public URL
       const { data: urlData } = supabase.storage.from('backgrounds').getPublicUrl(fileName);
 
-      // Save metadata via API
       const d = await apiFetch('/api/backgrounds', session, {
         method: 'POST',
         body: JSON.stringify({ name: name.trim(), category, image_url: urlData.publicUrl, storage_path: fileName }),
       });
 
       if (d.success) {
-        setSuccess(`"${name}" uploaded`);
+        showToast(`"${name}" uploaded`);
         setName(''); setImageFile(null); setImagePreview(null); setCatDashboard(true); setCatPrayer(false); setShowForm(false);
         loadBackgrounds();
       } else setError(d.error || 'Save failed');
@@ -275,96 +293,98 @@ function BackgroundsPage({ session }) {
   const handleDelete = async (bg) => {
     if (!confirm(`Delete "${bg.name}"?`)) return;
     const d = await apiFetch(`/api/backgrounds/${bg.id}`, session, { method: 'DELETE' });
-    if (d.success) loadBackgrounds();
+    if (d.success) { showToast(`"${bg.name}" deleted`); loadBackgrounds(); }
     else alert(d.error || 'Failed to delete');
   };
 
   const filtered = filter === 'all' ? backgrounds : backgrounds.filter((b) => b.category === filter || b.category === 'both');
+  const filters = [{ value: 'all', label: 'All' }, { value: 'dashboard', label: 'Dashboard' }, { value: 'prayer', label: 'Prayer' }];
 
   return (
-    <>
-      {success && <div style={{ color: '#166534', padding: '10px 14px', fontSize: '13px', marginBottom: '16px', background: '#f0fdf4', borderRadius: '6px', border: '1px solid #dcfce7' }}>{success}</div>}
-
-      <div style={s.card}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-          <span style={{ fontSize: '15px', fontWeight: '600', color: '#111' }}>Backgrounds</span>
-          <button style={showForm ? s.btnOutline : s.btn} onClick={() => { setShowForm(!showForm); setError(''); setSuccess(''); }}>
-            {showForm ? 'Cancel' : 'Upload'}
+    <div className="space-y-4">
+      <div className="bg-white rounded-xl border border-gray-100">
+        <div className="flex items-center justify-between p-5 border-b border-gray-50">
+          <div className="flex items-center gap-3">
+            <h2 className="text-sm font-semibold text-gray-900">Backgrounds</h2>
+            <span className="text-xs text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full">{backgrounds.length}</span>
+          </div>
+          <button onClick={() => { setShowForm(!showForm); setError(''); }} className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg transition ${showForm ? 'bg-gray-100 text-gray-600' : 'bg-gray-900 text-white hover:bg-gray-800'}`}>
+            {showForm ? 'Cancel' : <><Upload size={14} /> Upload</>}
           </button>
         </div>
 
         {showForm && (
-          <form onSubmit={handleUpload} style={{ marginBottom: '20px', padding: '16px', background: '#fafafa', borderRadius: '6px', border: '1px solid #eee' }}>
-            {error && <div style={{ color: '#c00', padding: '8px', fontSize: '13px', marginBottom: '8px' }}>{error}</div>}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxWidth: '400px' }}>
+          <div className="p-5 border-b border-gray-50 bg-gray-50/50">
+            <form onSubmit={handleUpload} className="max-w-md space-y-4">
+              {error && <div className="text-red-600 text-xs bg-red-50 px-3 py-2 rounded-lg">{error}</div>}
               <div>
-                <label style={s.label}>Name</label>
-                <input style={s.input} placeholder="e.g. Masjid Negara" value={name} onChange={(e) => setName(e.target.value)} required />
+                <label className="block text-xs font-medium text-gray-500 mb-1">Name</label>
+                <input className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-gray-400" placeholder="e.g. Masjid Negara" value={name} onChange={(e) => setName(e.target.value)} required />
               </div>
               <div>
-                <label style={s.label}>Display In</label>
-                <div style={{ display: 'flex', gap: '16px', marginTop: '4px' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', cursor: 'pointer', color: '#333' }}>
-                    <input type="checkbox" checked={catDashboard} onChange={(e) => setCatDashboard(e.target.checked)} /> Dashboard
+                <label className="block text-xs font-medium text-gray-500 mb-1">Display In</label>
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+                    <input type="checkbox" checked={catDashboard} onChange={(e) => setCatDashboard(e.target.checked)} className="rounded" /> Dashboard
                   </label>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', cursor: 'pointer', color: '#333' }}>
-                    <input type="checkbox" checked={catPrayer} onChange={(e) => setCatPrayer(e.target.checked)} /> Prayer
+                  <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+                    <input type="checkbox" checked={catPrayer} onChange={(e) => setCatPrayer(e.target.checked)} className="rounded" /> Prayer
                   </label>
                 </div>
               </div>
               <div>
-                <label style={s.label}>Image (max 5MB, recommended 1080x1920)</label>
-                <input type="file" accept="image/png,image/jpeg,image/webp" onChange={handleFileSelect}
-                  style={{ fontSize: '13px', color: '#666' }} />
+                <label className="block text-xs font-medium text-gray-500 mb-1">Image (max 5MB, 1080x1920 recommended)</label>
+                <input type="file" accept="image/png,image/jpeg,image/webp" onChange={handleFileSelect} className="text-sm text-gray-500" />
               </div>
               {imagePreview && (
-                <div style={{ width: '120px', height: '200px', borderRadius: '6px', overflow: 'hidden', border: '1px solid #eee' }}>
-                  <img src={imagePreview} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <div className="w-24 h-40 rounded-lg overflow-hidden border border-gray-200">
+                  <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
                 </div>
               )}
-              <button type="submit" style={{ ...s.btn, opacity: uploading ? 0.6 : 1, alignSelf: 'flex-start' }} disabled={uploading}>
+              <button type="submit" disabled={uploading} className="px-4 py-2 bg-gray-900 text-white text-xs font-medium rounded-lg hover:bg-gray-800 disabled:opacity-50">
                 {uploading ? 'Uploading...' : 'Upload Background'}
               </button>
-            </div>
-          </form>
-        )}
-
-        {/* Filter */}
-        <div style={{ display: 'flex', gap: '6px', marginBottom: '16px' }}>
-          {[{ value: 'all', label: 'All' }, { value: 'dashboard', label: 'Dashboard' }, { value: 'prayer', label: 'Prayer' }].map((f) => (
-            <button key={f.value} type="button" onClick={() => setFilter(f.value)}
-              style={{ ...s.btnOutline, background: filter === f.value ? '#111' : '#fff', color: filter === f.value ? '#fff' : '#111', padding: '6px 14px', fontSize: '12px' }}>
-              {f.label}
-            </button>
-          ))}
-        </div>
-
-        {loading ? <p style={{ color: '#999', textAlign: 'center', padding: '32px' }}>Loading...</p> :
-         filtered.length === 0 ? <p style={{ color: '#999', textAlign: 'center', padding: '32px' }}>No backgrounds yet</p> : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '12px' }}>
-            {filtered.map((bg) => (
-              <div key={bg.id} style={{ border: '1px solid #eee', borderRadius: '6px', overflow: 'hidden' }}>
-                <div style={{ width: '100%', height: '180px', background: '#f5f5f5' }}>
-                  <img src={bg.image_url} alt={bg.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                </div>
-                <div style={{ padding: '8px 10px' }}>
-                  <div style={{ fontSize: '12px', fontWeight: '600', color: '#111', marginBottom: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{bg.name}</div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={s.badge()}>{bg.category === 'both' ? 'all' : bg.category}</span>
-                    <button onClick={() => handleDelete(bg)} style={{ background: 'none', border: 'none', color: '#c00', fontSize: '11px', cursor: 'pointer', fontWeight: '500' }}>Delete</button>
-                  </div>
-                </div>
-              </div>
-            ))}
+            </form>
           </div>
         )}
+
+        <div className="p-5">
+          <div className="flex gap-1.5 mb-4">
+            {filters.map((f) => (
+              <button key={f.value} onClick={() => setFilter(f.value)}
+                className={`px-3 py-1.5 text-xs font-medium rounded-lg transition ${filter === f.value ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
+                {f.label}
+              </button>
+            ))}
+          </div>
+
+          {loading ? <div className="text-gray-400 text-center py-12 text-sm">Loading...</div> :
+           filtered.length === 0 ? <div className="text-gray-400 text-center py-12 text-sm">No backgrounds yet</div> : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+              {filtered.map((bg) => (
+                <div key={bg.id} className="group border border-gray-100 rounded-lg overflow-hidden hover:shadow-sm transition">
+                  <div className="w-full h-44 bg-gray-100">
+                    <img src={bg.image_url} alt={bg.name} className="w-full h-full object-cover" />
+                  </div>
+                  <div className="p-2.5">
+                    <div className="text-xs font-semibold text-gray-900 truncate mb-1">{bg.name}</div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">{bg.category === 'both' ? 'all' : bg.category}</span>
+                      <button onClick={() => handleDelete(bg)} className="text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition"><Trash2 size={12} /></button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
-    </>
+    </div>
   );
 }
 
 // ─── Azan Sounds ───
-function AzanSoundsPage({ session }) {
+function AzanSoundsPage({ session, showToast }) {
   const [azanSounds, setAzanSounds] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -373,7 +393,6 @@ function AzanSoundsPage({ session }) {
   const [durationSeconds, setDurationSeconds] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
 
   const loadAzanSounds = useCallback(() => {
     setLoading(true);
@@ -388,9 +407,7 @@ function AzanSoundsPage({ session }) {
     const file = e.target.files[0];
     if (!file) return;
     if (file.size > 20 * 1024 * 1024) { setError('Audio must be under 20MB'); return; }
-    setAudioFile(file);
-    setError('');
-    // Auto-detect duration
+    setAudioFile(file); setError('');
     const audio = new Audio();
     audio.src = URL.createObjectURL(file);
     audio.addEventListener('loadedmetadata', () => {
@@ -402,7 +419,7 @@ function AzanSoundsPage({ session }) {
   const handleUpload = async (e) => {
     e.preventDefault();
     if (!name.trim() || !audioFile) { setError('Name and audio file are required'); return; }
-    setUploading(true); setError(''); setSuccess('');
+    setUploading(true); setError('');
 
     try {
       const ext = audioFile.name.split('.').pop();
@@ -422,7 +439,7 @@ function AzanSoundsPage({ session }) {
       });
 
       if (d.success) {
-        setSuccess(`"${name}" uploaded`);
+        showToast(`"${name}" uploaded`);
         setName(''); setAudioFile(null); setDurationSeconds(null); setShowForm(false);
         loadAzanSounds();
       } else setError(d.error || 'Save failed');
@@ -435,7 +452,7 @@ function AzanSoundsPage({ session }) {
   const handleDelete = async (sound) => {
     if (!confirm(`Delete "${sound.name}"?`)) return;
     const d = await apiFetch(`/api/azan-sounds/${sound.id}`, session, { method: 'DELETE' });
-    if (d.success) loadAzanSounds();
+    if (d.success) { showToast(`"${sound.name}" deleted`); loadAzanSounds(); }
     else alert(d.error || 'Failed to delete');
   };
 
@@ -447,87 +464,68 @@ function AzanSoundsPage({ session }) {
   };
 
   return (
-    <>
-      {success && <div style={{ color: '#166534', padding: '10px 14px', fontSize: '13px', marginBottom: '16px', background: '#f0fdf4', borderRadius: '6px', border: '1px solid #dcfce7' }}>{success}</div>}
-
-      <div style={s.card}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-          <span style={{ fontSize: '15px', fontWeight: '600', color: '#111' }}>Azan Sounds</span>
-          <button style={showForm ? s.btnOutline : s.btn} onClick={() => { setShowForm(!showForm); setError(''); setSuccess(''); }}>
-            {showForm ? 'Cancel' : 'Upload Azan'}
-          </button>
+    <div className="bg-white rounded-xl border border-gray-100">
+      <div className="flex items-center justify-between p-5 border-b border-gray-50">
+        <div className="flex items-center gap-3">
+          <h2 className="text-sm font-semibold text-gray-900">Azan Sounds</h2>
+          <span className="text-xs text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full">{azanSounds.length}</span>
         </div>
-
-        {showForm && (
-          <form onSubmit={handleUpload} style={{ marginBottom: '20px', padding: '16px', background: '#fafafa', borderRadius: '6px', border: '1px solid #eee' }}>
-            {error && <div style={{ color: '#c00', padding: '8px', fontSize: '13px', marginBottom: '8px' }}>{error}</div>}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxWidth: '400px' }}>
-              <div>
-                <label style={s.label}>Name</label>
-                <input style={s.input} placeholder="e.g. Azan Makkah" value={name} onChange={(e) => setName(e.target.value)} required />
-              </div>
-              <div>
-                <label style={s.label}>Audio File (max 20MB, MP3/M4A/AAC/WAV)</label>
-                <input type="file" accept="audio/mp3,audio/mpeg,audio/m4a,audio/aac,audio/wav,audio/x-m4a,audio/mp4" onChange={handleFileSelect}
-                  style={{ fontSize: '13px', color: '#666' }} />
-              </div>
-              {durationSeconds && (
-                <div style={{ fontSize: '12px', color: '#666' }}>Duration: {fmtDuration(durationSeconds)}</div>
-              )}
-              <button type="submit" style={{ ...s.btn, opacity: uploading ? 0.6 : 1, alignSelf: 'flex-start' }} disabled={uploading}>
-                {uploading ? 'Uploading...' : 'Upload Azan Sound'}
-              </button>
-            </div>
-          </form>
-        )}
-
-        {loading ? <p style={{ color: '#999', textAlign: 'center', padding: '32px' }}>Loading...</p> :
-         azanSounds.length === 0 ? <p style={{ color: '#999', textAlign: 'center', padding: '32px' }}>No azan sounds uploaded yet</p> : (
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead><tr><th style={s.th}>Name</th><th style={s.th}>Preview</th><th style={s.th}>Duration</th><th style={s.th}>Uploaded</th><th style={s.th}></th></tr></thead>
-            <tbody>
-              {azanSounds.map((sound) => (
-                <tr key={sound.id}>
-                  <td style={{ ...s.td, fontWeight: '500' }}>{sound.name}</td>
-                  <td style={s.td}><audio controls src={sound.file_url} style={{ height: '32px', maxWidth: '220px' }} /></td>
-                  <td style={s.td}>{fmtDuration(sound.duration_seconds)}</td>
-                  <td style={s.td}>{new Date(sound.created_at).toLocaleDateString()}</td>
-                  <td style={s.td}><button onClick={() => handleDelete(sound)} style={{ background: 'none', border: 'none', color: '#c00', fontSize: '11px', cursor: 'pointer', fontWeight: '500' }}>Delete</button></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+        <button onClick={() => { setShowForm(!showForm); setError(''); }} className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg transition ${showForm ? 'bg-gray-100 text-gray-600' : 'bg-gray-900 text-white hover:bg-gray-800'}`}>
+          {showForm ? 'Cancel' : <><Upload size={14} /> Upload Azan</>}
+        </button>
       </div>
-    </>
-  );
-}
 
-// ─── Content ───
-function ContentPage() {
-  const content = [
-    { title: 'Prayer Times Update - Ramadan 2026', type: 'Announcement', date: '2026-05-01', status: 'active' },
-    { title: 'New Quran Reciter Added', type: 'Feature', date: '2026-04-28', status: 'active' },
-    { title: 'Zakat Calculator v2.0', type: 'Feature', date: '2026-04-15', status: 'active' },
-    { title: 'App Maintenance Notice', type: 'Announcement', date: '2026-03-20', status: 'inactive' },
-  ];
-  return (
-    <div style={s.card}>
-      <div style={{ fontSize: '15px', fontWeight: '600', color: '#111', marginBottom: '16px' }}>Content</div>
-      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-        <thead><tr><th style={s.th}>Title</th><th style={s.th}>Type</th><th style={s.th}>Date</th><th style={s.th}>Status</th></tr></thead>
-        <tbody>
-          {content.map((item) => (
-            <tr key={item.title}><td style={s.td}>{item.title}</td><td style={s.td}>{item.type}</td><td style={s.td}>{item.date}</td><td style={s.td}><span style={s.badge()}>{item.status}</span></td></tr>
-          ))}
-        </tbody>
-      </table>
+      {showForm && (
+        <div className="p-5 border-b border-gray-50 bg-gray-50/50">
+          <form onSubmit={handleUpload} className="max-w-md space-y-4">
+            {error && <div className="text-red-600 text-xs bg-red-50 px-3 py-2 rounded-lg">{error}</div>}
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Name</label>
+              <input className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-gray-400" placeholder="e.g. Azan Makkah" value={name} onChange={(e) => setName(e.target.value)} required />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Audio File (max 20MB, MP3/M4A/AAC/WAV)</label>
+              <input type="file" accept="audio/mp3,audio/mpeg,audio/m4a,audio/aac,audio/wav,audio/x-m4a,audio/mp4" onChange={handleFileSelect} className="text-sm text-gray-500" />
+            </div>
+            {durationSeconds && <div className="text-xs text-gray-500">Duration: {fmtDuration(durationSeconds)}</div>}
+            <button type="submit" disabled={uploading} className="px-4 py-2 bg-gray-900 text-white text-xs font-medium rounded-lg hover:bg-gray-800 disabled:opacity-50">
+              {uploading ? 'Uploading...' : 'Upload Azan Sound'}
+            </button>
+          </form>
+        </div>
+      )}
+
+      {loading ? <div className="text-gray-400 text-center py-12 text-sm">Loading...</div> :
+       azanSounds.length === 0 ? <div className="text-gray-400 text-center py-12 text-sm">No azan sounds uploaded yet</div> : (
+        <table className="w-full">
+          <thead><tr className="border-b border-gray-50">
+            <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Name</th>
+            <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Preview</th>
+            <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Duration</th>
+            <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Uploaded</th>
+            <th className="px-5 py-3"></th>
+          </tr></thead>
+          <tbody>
+            {azanSounds.map((sound) => (
+              <tr key={sound.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50">
+                <td className="px-5 py-3 text-sm text-gray-900 font-medium">{sound.name}</td>
+                <td className="px-5 py-3"><audio controls src={sound.file_url} className="h-8 max-w-[220px]" /></td>
+                <td className="px-5 py-3 text-sm text-gray-400">{fmtDuration(sound.duration_seconds)}</td>
+                <td className="px-5 py-3 text-sm text-gray-400">{new Date(sound.created_at).toLocaleDateString()}</td>
+                <td className="px-5 py-3 text-right">
+                  <button onClick={() => handleDelete(sound)} className="text-red-400 hover:text-red-600 transition"><Trash2 size={14} /></button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
     </div>
   );
 }
 
 // ─── Notifications ───
-function NotificationsPage({ session }) {
+function NotificationsPage({ session, showToast }) {
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [topic, setTopic] = useState('general');
@@ -537,7 +535,6 @@ function NotificationsPage({ session }) {
   const [selectedUser, setSelectedUser] = useState(null);
   const [searching, setSearching] = useState(false);
   const [sending, setSending] = useState(false);
-  const [result, setResult] = useState(null);
   const [error, setError] = useState('');
   const [history, setHistory] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
@@ -574,30 +571,30 @@ function NotificationsPage({ session }) {
     const target = sendMode === 'user' ? `"${selectedUser.name || selectedUser.email}"` : `all users (${topics.find((t) => t.value === topic)?.label})`;
     if (!confirm(`Send to ${target}?\n\n${title}\n${body}`)) return;
 
-    setSending(true); setResult(null); setError('');
+    setSending(true); setError('');
     const payload = { title: title.trim(), body: body.trim(), topic };
     if (sendMode === 'user') payload.user_id = selectedUser.id;
 
     const d = await apiFetch('/api/admin/send-notification', session, { method: 'POST', body: JSON.stringify(payload) });
     if (d.success) {
-      setResult({ ...d, sendMode, userName: selectedUser?.name || selectedUser?.email });
+      showToast(sendMode === 'user' ? `Sent to ${selectedUser.name || selectedUser.email}` : `Sent to all users`);
       setTitle(''); setBody(''); setSelectedUser(null); setSearchQuery(''); setSearchResults([]); loadHistory();
     } else setError(d.error || 'Failed');
     setSending(false);
   };
 
   return (
-    <>
-      <div style={s.card}>
-        <div style={{ fontSize: '15px', fontWeight: '600', color: '#111', marginBottom: '16px' }}>Send Notification</div>
-        <form onSubmit={handleSend} style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxWidth: '560px' }}>
-          {/* Send mode */}
+    <div className="space-y-4">
+      {/* Send form */}
+      <div className="bg-white rounded-xl border border-gray-100 p-5">
+        <h2 className="text-sm font-semibold text-gray-900 mb-4">Send Notification</h2>
+        <form onSubmit={handleSend} className="max-w-lg space-y-4">
           <div>
-            <label style={s.label}>Send To</label>
-            <div style={{ display: 'flex', gap: '6px' }}>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Send To</label>
+            <div className="flex gap-1.5">
               {[{ value: 'all', label: 'All Users' }, { value: 'user', label: 'Specific User' }].map((m) => (
                 <button key={m.value} type="button" onClick={() => { setSendMode(m.value); setSelectedUser(null); setSearchQuery(''); setSearchResults([]); setError(''); }}
-                  style={{ ...s.btnOutline, background: sendMode === m.value ? '#111' : '#fff', color: sendMode === m.value ? '#fff' : '#111' }}>
+                  className={`px-3 py-1.5 text-xs font-medium rounded-lg transition ${sendMode === m.value ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
                   {m.label}
                 </button>
               ))}
@@ -606,8 +603,8 @@ function NotificationsPage({ session }) {
 
           {sendMode === 'all' && (
             <div>
-              <label style={s.label}>Topic</label>
-              <select style={{ ...s.input, cursor: 'pointer' }} value={topic} onChange={(e) => setTopic(e.target.value)}>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Topic</label>
+              <select className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-gray-400 cursor-pointer" value={topic} onChange={(e) => setTopic(e.target.value)}>
                 {topics.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
               </select>
             </div>
@@ -615,88 +612,90 @@ function NotificationsPage({ session }) {
 
           {sendMode === 'user' && (
             <div>
-              <label style={s.label}>User</label>
+              <label className="block text-xs font-medium text-gray-500 mb-1">User</label>
               {selectedUser ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 12px', background: '#fafafa', borderRadius: '6px', border: '1px solid #ddd' }}>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: '13px', fontWeight: '600', color: '#111' }}>{selectedUser.name || 'No name'}</div>
-                    <div style={{ fontSize: '12px', color: '#999' }}>{selectedUser.email}</div>
+                <div className="flex items-center gap-3 px-3 py-2.5 bg-gray-50 rounded-lg border border-gray-200">
+                  <div className="flex-1">
+                    <div className="text-sm font-medium text-gray-900">{selectedUser.name || 'No name'}</div>
+                    <div className="text-xs text-gray-400">{selectedUser.email}</div>
                   </div>
-                  <button type="button" onClick={() => { setSelectedUser(null); setSearchQuery(''); setSearchResults([]); }} style={{ ...s.btnOutline, padding: '4px 10px', fontSize: '12px' }}>Change</button>
+                  <button type="button" onClick={() => { setSelectedUser(null); setSearchQuery(''); setSearchResults([]); }} className="text-xs text-gray-400 hover:text-gray-600">Change</button>
                 </div>
               ) : (
-                <>
-                  <input style={s.input} placeholder="Search by name or email..." value={searchQuery} onChange={(e) => handleSearch(e.target.value)} />
-                  {searching && <div style={{ fontSize: '12px', color: '#999', marginTop: '4px' }}>Searching...</div>}
+                <div className="relative">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300" />
+                  <input className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-gray-400" placeholder="Search by name or email..." value={searchQuery} onChange={(e) => handleSearch(e.target.value)} />
+                  {searching && <div className="text-xs text-gray-400 mt-1">Searching...</div>}
                   {searchResults.length > 0 && (
-                    <div style={{ border: '1px solid #eee', borderRadius: '6px', marginTop: '4px', maxHeight: '200px', overflowY: 'auto' }}>
+                    <div className="absolute w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto z-10">
                       {searchResults.map((u) => (
                         <div key={u.id} onClick={() => { setSelectedUser(u); setSearchResults([]); setSearchQuery(''); }}
-                          style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: '1px solid #f5f5f5', fontSize: '13px' }}
-                          onMouseEnter={(e) => e.currentTarget.style.background = '#fafafa'}
-                          onMouseLeave={(e) => e.currentTarget.style.background = '#fff'}>
-                          <div style={{ fontWeight: '500', color: '#111' }}>{u.name || 'No name'}</div>
-                          <div style={{ fontSize: '11px', color: '#999' }}>{u.email}</div>
+                          className="px-3 py-2.5 cursor-pointer hover:bg-gray-50 border-b border-gray-50 last:border-0">
+                          <div className="text-sm font-medium text-gray-900">{u.name || 'No name'}</div>
+                          <div className="text-xs text-gray-400">{u.email}</div>
                         </div>
                       ))}
                     </div>
                   )}
-                  {searchQuery.length >= 2 && !searching && searchResults.length === 0 && <div style={{ fontSize: '12px', color: '#999', marginTop: '4px' }}>No users found</div>}
-                </>
+                  {searchQuery.length >= 2 && !searching && searchResults.length === 0 && <div className="text-xs text-gray-400 mt-1">No users found</div>}
+                </div>
               )}
             </div>
           )}
 
           <div>
-            <label style={s.label}>Title</label>
-            <input style={s.input} placeholder="Notification title" value={title} onChange={(e) => setTitle(e.target.value)} required maxLength={100} />
+            <label className="block text-xs font-medium text-gray-500 mb-1">Title</label>
+            <input className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-gray-400" placeholder="Notification title" value={title} onChange={(e) => setTitle(e.target.value)} required maxLength={100} />
           </div>
           <div>
-            <label style={s.label}>Message</label>
-            <textarea style={{ ...s.input, minHeight: '80px', resize: 'vertical', fontFamily: 'inherit' }} placeholder="Message body" value={body} onChange={(e) => setBody(e.target.value)} required maxLength={500} />
+            <label className="block text-xs font-medium text-gray-500 mb-1">Message</label>
+            <textarea className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-gray-400 min-h-[80px] resize-y font-[inherit]" placeholder="Message body" value={body} onChange={(e) => setBody(e.target.value)} required maxLength={500} />
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <button type="submit" style={{ ...s.btn, opacity: sending ? 0.6 : 1 }} disabled={sending}>
-              {sending ? 'Sending...' : 'Send'}
+          <div className="flex items-center gap-3">
+            <button type="submit" disabled={sending} className="px-4 py-2 bg-gray-900 text-white text-xs font-medium rounded-lg hover:bg-gray-800 disabled:opacity-50">
+              {sending ? 'Sending...' : 'Send Notification'}
             </button>
-            <span style={{ fontSize: '11px', color: '#ccc' }}>{title.length}/100 | {body.length}/500</span>
+            <span className="text-[11px] text-gray-300">{title.length}/100 | {body.length}/500</span>
           </div>
-        </form>
 
-        {error && <div style={{ color: '#c00', padding: '10px', fontSize: '13px', marginTop: '12px', background: '#fafafa', borderRadius: '6px', border: '1px solid #eee' }}>{error}</div>}
-        {result && <div style={{ color: '#166534', padding: '10px', fontSize: '13px', marginTop: '12px', background: '#f0fdf4', borderRadius: '6px', border: '1px solid #dcfce7' }}>
-          {result.sendMode === 'user' ? `Sent to ${result.userName}` : `Sent to topic "${result.topic}"`}
-        </div>}
+          {error && <div className="text-red-600 text-xs bg-red-50 px-3 py-2 rounded-lg">{error}</div>}
+        </form>
       </div>
 
-      <div style={s.card}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
-          <span style={{ fontSize: '15px', fontWeight: '600', color: '#111' }}>History</span>
-          <span style={{ fontSize: '13px', color: '#999' }}>{history.length}</span>
+      {/* History */}
+      <div className="bg-white rounded-xl border border-gray-100">
+        <div className="flex items-center justify-between p-5 border-b border-gray-50">
+          <h2 className="text-sm font-semibold text-gray-900">Notification History</h2>
+          <span className="text-xs text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full">{history.length}</span>
         </div>
-        {loadingHistory ? <p style={{ color: '#999', textAlign: 'center', padding: '32px' }}>Loading...</p> :
-         history.length === 0 ? <p style={{ color: '#999', textAlign: 'center', padding: '32px' }}>No notifications sent yet</p> : (
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead><tr><th style={s.th}>Title</th><th style={s.th}>Message</th><th style={s.th}>Topic</th><th style={s.th}>Date</th></tr></thead>
+        {loadingHistory ? <div className="text-gray-400 text-center py-12 text-sm">Loading...</div> :
+         history.length === 0 ? <div className="text-gray-400 text-center py-12 text-sm">No notifications sent yet</div> : (
+          <table className="w-full">
+            <thead><tr className="border-b border-gray-50">
+              <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Title</th>
+              <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Message</th>
+              <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Topic</th>
+              <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Date</th>
+            </tr></thead>
             <tbody>
               {history.map((n) => (
-                <tr key={n.id}>
-                  <td style={{ ...s.td, fontWeight: '500', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n.title}</td>
-                  <td style={{ ...s.td, maxWidth: '260px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n.body}</td>
-                  <td style={s.td}><span style={s.badge()}>{n.topic || 'general'}</span></td>
-                  <td style={s.td}>{new Date(n.created_at).toLocaleString()}</td>
+                <tr key={n.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50">
+                  <td className="px-5 py-3 text-sm text-gray-900 font-medium max-w-[180px] truncate">{n.title}</td>
+                  <td className="px-5 py-3 text-sm text-gray-500 max-w-[260px] truncate">{n.body}</td>
+                  <td className="px-5 py-3"><span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded">{n.topic || 'general'}</span></td>
+                  <td className="px-5 py-3 text-sm text-gray-400">{new Date(n.created_at).toLocaleString()}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         )}
       </div>
-    </>
+    </div>
   );
 }
 
 // ─── Feedback ───
-function FeedbackPage({ session }) {
+function FeedbackPage({ session, showToast }) {
   const [feedback, setFeedback] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
@@ -715,7 +714,7 @@ function FeedbackPage({ session }) {
     if (!confirm('Mark this feedback as resolved? The user will be notified.')) return;
     setResolving(true);
     const d = await apiFetch(`/api/feedback/${item.id}`, session, { method: 'PUT', body: JSON.stringify({ status: 'resolved' }) });
-    if (d.success) { setSelected(null); loadFeedback(); }
+    if (d.success) { showToast('Feedback marked as resolved'); setSelected(null); loadFeedback(); }
     else alert(d.error || 'Failed to resolve');
     setResolving(false);
   };
@@ -723,49 +722,55 @@ function FeedbackPage({ session }) {
   const filtered = filter === 'all' ? feedback : feedback.filter((f) => f.status === filter);
   const truncate = (str, len = 60) => str && str.length > len ? str.substring(0, len) + '...' : str || '-';
 
-  if (loading) return <p style={{ color: '#999', padding: '40px', textAlign: 'center' }}>Loading...</p>;
+  if (loading) return <div className="flex justify-center py-20 text-gray-400">Loading...</div>;
 
   return (
-    <>
-      <div style={s.card}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '15px', fontWeight: '600', color: '#111' }}>Feedback & Bug Reports</span>
-            <span style={{ ...s.badge(), fontSize: '12px' }}>{filtered.length}</span>
+    <div className="space-y-4">
+      <div className="bg-white rounded-xl border border-gray-100">
+        <div className="flex items-center justify-between p-5 border-b border-gray-50">
+          <div className="flex items-center gap-3">
+            <h2 className="text-sm font-semibold text-gray-900">Feedback & Bug Reports</h2>
+            <span className="text-xs text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full">{filtered.length}</span>
+          </div>
+          <div className="flex gap-1.5">
+            {[{ value: 'all', label: 'All' }, { value: 'pending', label: 'Pending' }, { value: 'resolved', label: 'Resolved' }].map((f) => (
+              <button key={f.value} onClick={() => setFilter(f.value)}
+                className={`px-3 py-1.5 text-xs font-medium rounded-lg transition ${filter === f.value ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
+                {f.label}
+              </button>
+            ))}
           </div>
         </div>
 
-        {/* Filter tabs */}
-        <div style={{ display: 'flex', gap: '6px', marginBottom: '16px' }}>
-          {[{ value: 'all', label: 'All' }, { value: 'pending', label: 'Pending' }, { value: 'resolved', label: 'Resolved' }].map((f) => (
-            <button key={f.value} type="button" onClick={() => setFilter(f.value)}
-              style={{ ...s.btnOutline, background: filter === f.value ? '#111' : '#fff', color: filter === f.value ? '#fff' : '#111', padding: '6px 14px', fontSize: '12px' }}>
-              {f.label}
-            </button>
-          ))}
-        </div>
-
-        {filtered.length === 0 ? <p style={{ color: '#999', textAlign: 'center', padding: '32px' }}>No feedback yet</p> : (
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead><tr><th style={s.th}>Email</th><th style={s.th}>Feature</th><th style={s.th}>Message</th><th style={s.th}>Images</th><th style={s.th}>Status</th><th style={s.th}>Date</th><th style={s.th}>Action</th></tr></thead>
+        {filtered.length === 0 ? <div className="text-gray-400 text-center py-12 text-sm">No feedback yet</div> : (
+          <table className="w-full">
+            <thead><tr className="border-b border-gray-50">
+              <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Email</th>
+              <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Feature</th>
+              <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Message</th>
+              <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Images</th>
+              <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Status</th>
+              <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Date</th>
+              <th className="px-5 py-3"></th>
+            </tr></thead>
             <tbody>
               {filtered.map((item) => (
-                <tr key={item.id} onClick={() => setSelected(selected?.id === item.id ? null : item)} style={{ cursor: 'pointer' }}>
-                  <td style={s.td}>{item.email || '-'}</td>
-                  <td style={s.td}><span style={s.badge()}>{item.feature || '-'}</span></td>
-                  <td style={{ ...s.td, maxWidth: '240px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{truncate(item.message)}</td>
-                  <td style={s.td}>{item.image_urls && item.image_urls.length > 0 ? `${item.image_urls.length} image${item.image_urls.length > 1 ? 's' : ''}` : '-'}</td>
-                  <td style={s.td}>
-                    <span style={{ padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: '500', background: item.status === 'pending' ? '#fff7ed' : '#f0fdf4', color: item.status === 'pending' ? '#c2410c' : '#166534' }}>
+                <tr key={item.id} onClick={() => setSelected(selected?.id === item.id ? null : item)} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50 cursor-pointer">
+                  <td className="px-5 py-3 text-sm text-gray-500">{item.email || '-'}</td>
+                  <td className="px-5 py-3"><span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded">{item.feature || '-'}</span></td>
+                  <td className="px-5 py-3 text-sm text-gray-500 max-w-[240px] truncate">{truncate(item.message)}</td>
+                  <td className="px-5 py-3 text-sm text-gray-400">{item.image_urls && item.image_urls.length > 0 ? `${item.image_urls.length} img` : '-'}</td>
+                  <td className="px-5 py-3">
+                    <span className={`text-xs px-2 py-0.5 rounded font-medium ${item.status === 'pending' ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600'}`}>
                       {item.status}
                     </span>
                   </td>
-                  <td style={s.td}>{new Date(item.created_at).toLocaleDateString()}</td>
-                  <td style={s.td}>
-                    {item.status === 'pending' ? (
-                      <button style={s.btn} onClick={(e) => { e.stopPropagation(); handleResolve(item); }}>Resolve</button>
-                    ) : (
-                      <span style={{ fontSize: '12px', color: '#166534' }}>Resolved</span>
+                  <td className="px-5 py-3 text-sm text-gray-400">{new Date(item.created_at).toLocaleDateString()}</td>
+                  <td className="px-5 py-3 text-right">
+                    {item.status === 'pending' && (
+                      <button onClick={(e) => { e.stopPropagation(); handleResolve(item); }} className="text-xs bg-emerald-50 text-emerald-600 px-2.5 py-1 rounded-lg hover:bg-emerald-100 font-medium transition">
+                        Resolve
+                      </button>
                     )}
                   </td>
                 </tr>
@@ -775,117 +780,145 @@ function FeedbackPage({ session }) {
         )}
       </div>
 
-      {/* Detail section */}
+      {/* Detail panel */}
       {selected && (
-        <div style={s.card}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-            <span style={{ fontSize: '15px', fontWeight: '600', color: '#111' }}>Feedback Detail</span>
-            <button style={s.btnOutline} onClick={() => setSelected(null)}>Close</button>
+        <div className="bg-white rounded-xl border border-gray-100 p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-semibold text-gray-900">Feedback Detail</h2>
+            <button onClick={() => setSelected(null)} className="text-gray-400 hover:text-gray-600"><X size={16} /></button>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <div><label style={s.label}>Email</label><div style={{ fontSize: '13px', color: '#333' }}>{selected.email || '-'}</div></div>
-            <div><label style={s.label}>Feature</label><div><span style={s.badge()}>{selected.feature || '-'}</span></div></div>
-            <div><label style={s.label}>Message</label><div style={{ fontSize: '13px', color: '#333', whiteSpace: 'pre-wrap' }}>{selected.message || '-'}</div></div>
-            <div><label style={s.label}>Submitted</label><div style={{ fontSize: '13px', color: '#333' }}>{new Date(selected.created_at).toLocaleString()}</div></div>
-            {selected.status === 'resolved' && (
-              <>
-                {selected.resolved_at && <div><label style={s.label}>Resolved</label><div style={{ fontSize: '13px', color: '#333' }}>{new Date(selected.resolved_at).toLocaleString()}</div></div>}
-                {selected.resolved_by && <div><label style={s.label}>Resolved By</label><div style={{ fontSize: '13px', color: '#333' }}>{selected.resolved_by}</div></div>}
-              </>
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div><span className="block text-xs font-medium text-gray-400 mb-0.5">Email</span><span className="text-gray-700">{selected.email || '-'}</span></div>
+            <div><span className="block text-xs font-medium text-gray-400 mb-0.5">Feature</span><span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded">{selected.feature || '-'}</span></div>
+            <div className="col-span-2"><span className="block text-xs font-medium text-gray-400 mb-0.5">Message</span><p className="text-gray-700 whitespace-pre-wrap">{selected.message || '-'}</p></div>
+            <div><span className="block text-xs font-medium text-gray-400 mb-0.5">Submitted</span><span className="text-gray-700">{new Date(selected.created_at).toLocaleString()}</span></div>
+            {selected.status === 'resolved' && selected.resolved_at && (
+              <div><span className="block text-xs font-medium text-gray-400 mb-0.5">Resolved</span><span className="text-gray-700">{new Date(selected.resolved_at).toLocaleString()}</span></div>
             )}
-            {selected.image_urls && selected.image_urls.length > 0 && (
-              <div>
-                <label style={s.label}>Images</label>
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '4px' }}>
-                  {selected.image_urls.map((img, idx) => (
-                    <a key={idx} href={img} target="_blank" rel="noopener noreferrer" style={{ display: 'block', width: '160px', height: '160px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #eee' }}>
-                      <img src={img} alt={`Attachment ${idx + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    </a>
-                  ))}
-                </div>
+            {selected.status === 'resolved' && selected.resolved_by && (
+              <div><span className="block text-xs font-medium text-gray-400 mb-0.5">Resolved By</span><span className="text-gray-700">{selected.resolved_by}</span></div>
+            )}
+          </div>
+          {selected.image_urls && selected.image_urls.length > 0 && (
+            <div className="mt-4">
+              <span className="block text-xs font-medium text-gray-400 mb-2">Attachments</span>
+              <div className="flex gap-2 flex-wrap">
+                {selected.image_urls.map((img, idx) => (
+                  <a key={idx} href={img} target="_blank" rel="noopener noreferrer" className="block w-32 h-32 rounded-lg overflow-hidden border border-gray-100 hover:shadow-md transition">
+                    <img src={img} alt={`Attachment ${idx + 1}`} className="w-full h-full object-cover" />
+                  </a>
+                ))}
               </div>
-            )}
-            {selected.status === 'pending' && (
-              <button style={{ ...s.btn, alignSelf: 'flex-start', opacity: resolving ? 0.6 : 1 }} disabled={resolving} onClick={() => handleResolve(selected)}>
-                {resolving ? 'Resolving...' : 'Mark as Resolved'}
-              </button>
-            )}
-          </div>
+            </div>
+          )}
+          {selected.status === 'pending' && (
+            <button disabled={resolving} onClick={() => handleResolve(selected)} className="mt-4 px-4 py-2 bg-emerald-600 text-white text-xs font-medium rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition">
+              {resolving ? 'Resolving...' : 'Mark as Resolved'}
+            </button>
+          )}
         </div>
       )}
-    </>
-  );
-}
-
-// ─── Analytics ───
-function AnalyticsPage() {
-  const data = [
-    { feature: 'Prayer Times', usage: '89%', sessions: '11,087' },
-    { feature: 'Al-Quran', usage: '72%', sessions: '8,965' },
-    { feature: 'Qiblah Compass', usage: '56%', sessions: '6,973' },
-    { feature: 'Daily Azkar', usage: '48%', sessions: '5,980' },
-    { feature: 'Zakat Calculator', usage: '31%', sessions: '3,862' },
-  ];
-  return (
-    <div style={s.card}>
-      <div style={{ fontSize: '15px', fontWeight: '600', color: '#111', marginBottom: '16px' }}>Top Features</div>
-      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-        <thead><tr><th style={s.th}>Feature</th><th style={s.th}>Usage</th><th style={s.th}>Sessions</th></tr></thead>
-        <tbody>{data.map((f) => <tr key={f.feature}><td style={s.td}>{f.feature}</td><td style={s.td}>{f.usage}</td><td style={s.td}>{f.sessions}</td></tr>)}</tbody>
-      </table>
     </div>
   );
 }
 
-// ─── Settings ───
-function SettingsPage() {
-  return (
-    <div style={s.card}>
-      <div style={{ fontSize: '15px', fontWeight: '600', color: '#111', marginBottom: '16px' }}>Settings</div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', maxWidth: '400px' }}>
-        {[['App Name', 'HidayahMY'], ['Support Email', 'support@hidayahmy.com'], ['Default Language', 'Bahasa Malaysia'], ['Prayer Time Source', 'JAKIM']].map(([label, val]) => (
-          <div key={label}>
-            <label style={s.label}>{label}</label>
-            <input style={s.input} defaultValue={val} />
-          </div>
-        ))}
-        <button style={{ ...s.btn, alignSelf: 'flex-start' }}>Save</button>
-      </div>
-    </div>
-  );
-}
+// ─── Navigation config ───
+const navSections = [
+  {
+    label: 'Overview',
+    items: [{ id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard }],
+  },
+  {
+    label: 'Users',
+    items: [
+      { id: 'customers', label: 'Customers', icon: Users },
+      { id: 'team', label: 'Team', icon: ShieldCheck },
+    ],
+  },
+  {
+    label: 'Content',
+    items: [
+      { id: 'backgrounds', label: 'Backgrounds', icon: Image },
+      { id: 'azan', label: 'Azan Sounds', icon: Volume2 },
+    ],
+  },
+  {
+    label: 'Engagement',
+    items: [
+      { id: 'notifications', label: 'Notifications', icon: Bell },
+      { id: 'feedback', label: 'Feedback', icon: MessageSquareText },
+    ],
+  },
+];
+
+const pages = {
+  dashboard: DashboardPage,
+  customers: CustomersPage,
+  team: TeamPage,
+  backgrounds: BackgroundsPage,
+  azan: AzanSoundsPage,
+  notifications: NotificationsPage,
+  feedback: FeedbackPage,
+};
+
+const pageLabels = {};
+navSections.forEach((sec) => sec.items.forEach((item) => { pageLabels[item.id] = item.label; }));
 
 // ─── Layout ───
-const pages = { dashboard: DashboardPage, customers: CustomersPage, team: TeamPage, backgrounds: BackgroundsPage, azan: AzanSoundsPage, content: ContentPage, notifications: NotificationsPage, feedback: FeedbackPage, analytics: AnalyticsPage, settings: SettingsPage };
-
 export default function Dashboard({ onLogout, session }) {
   const [activePage, setActivePage] = useState('dashboard');
+  const [toast, setToast] = useState(null);
   const PageComponent = pages[activePage];
 
+  const showToast = (message, type = 'success') => setToast({ message, type });
+
   return (
-    <div style={{ display: 'flex', minHeight: '100vh' }}>
-      <aside style={{ width: '220px', background: '#111', color: '#fff', position: 'fixed', height: '100vh', display: 'flex', flexDirection: 'column' }}>
-        <div style={{ padding: '20px', borderBottom: '1px solid #222', display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <img src="/hidayahicon.png" alt="" style={{ width: '28px', height: '28px', borderRadius: '6px' }} />
-          <span style={{ fontSize: '15px', fontWeight: '600' }}>HidayahMY</span>
+    <div className="flex min-h-screen bg-gray-50/80">
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+
+      {/* Sidebar */}
+      <aside className="w-56 bg-white border-r border-gray-100 fixed h-screen flex flex-col">
+        {/* Logo */}
+        <div className="px-5 py-5 flex items-center gap-2.5">
+          <img src="/hidayahicon.png" alt="" className="w-7 h-7 rounded-lg" />
+          <span className="text-sm font-bold text-gray-900 tracking-tight">HidayahMY</span>
         </div>
-        <nav style={{ padding: '8px 0', flex: 1 }}>
-          {navItems.map((item) => (
-            <div key={item.id} onClick={() => setActivePage(item.id)}
-              style={{ padding: '10px 20px', cursor: 'pointer', fontSize: '13px', fontWeight: activePage === item.id ? '600' : '400', background: activePage === item.id ? '#222' : 'transparent', color: activePage === item.id ? '#fff' : '#888', borderLeft: activePage === item.id ? '2px solid #fff' : '2px solid transparent' }}>
-              {item.label}
+
+        {/* Nav */}
+        <nav className="flex-1 px-3 py-2 space-y-5 overflow-y-auto">
+          {navSections.map((section) => (
+            <div key={section.label}>
+              <div className="text-[10px] font-semibold text-gray-300 uppercase tracking-widest px-2 mb-1.5">{section.label}</div>
+              <div className="space-y-0.5">
+                {section.items.map((item) => {
+                  const active = activePage === item.id;
+                  return (
+                    <button key={item.id} onClick={() => setActivePage(item.id)}
+                      className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13px] font-medium transition ${active ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'}`}>
+                      <item.icon size={16} strokeWidth={active ? 2 : 1.5} />
+                      {item.label}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           ))}
         </nav>
-        <div style={{ padding: '16px 20px', borderTop: '1px solid #222' }}>
-          <div style={{ fontSize: '11px', color: '#666', marginBottom: '8px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{session?.user?.email}</div>
-          <div onClick={onLogout} style={{ padding: '8px', background: '#222', borderRadius: '6px', textAlign: 'center', cursor: 'pointer', fontSize: '13px', color: '#999' }}>Sign Out</div>
+
+        {/* User */}
+        <div className="px-3 py-4 border-t border-gray-100">
+          <div className="text-[11px] text-gray-400 truncate px-2.5 mb-2">{session?.user?.email}</div>
+          <button onClick={onLogout} className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-[13px] text-gray-400 hover:bg-gray-50 hover:text-gray-600 transition">
+            <LogOut size={15} />
+            Sign Out
+          </button>
         </div>
       </aside>
 
-      <main style={{ flex: 1, marginLeft: '220px', padding: '24px 32px', background: '#fafafa' }}>
-        <h1 style={{ fontSize: '20px', fontWeight: '600', color: '#111', marginBottom: '24px' }}>{navItems.find((n) => n.id === activePage)?.label}</h1>
-        <PageComponent session={session} />
+      {/* Main content */}
+      <main className="flex-1 ml-56 p-8">
+        <h1 className="text-lg font-bold text-gray-900 mb-6">{pageLabels[activePage]}</h1>
+        <PageComponent session={session} showToast={showToast} />
       </main>
     </div>
   );
