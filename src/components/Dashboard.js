@@ -1005,6 +1005,18 @@ function EventsPage({ session, showToast }) {
               <div><span className="block text-xs font-medium text-gray-400 mb-0.5">Coordinates</span><span className="text-gray-700">{selected.latitude}, {selected.longitude}</span></div>
             )}
             <div><span className="block text-xs font-medium text-gray-400 mb-0.5">Event Date</span><span className="text-gray-700">{selected.start_date ? new Date(selected.start_date).toLocaleString() : '-'}</span></div>
+            {selected.image_urls && selected.image_urls.length > 0 && (
+              <div className="col-span-2">
+                <span className="block text-xs font-medium text-gray-400 mb-1.5">Images</span>
+                <div className="flex gap-3">
+                  {selected.image_urls.map((url, i) => (
+                    <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="block">
+                      <img src={url} alt={`Event image ${i + 1}`} className="w-40 h-28 object-cover rounded-lg border border-gray-100 hover:opacity-80 transition" />
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Response counts */}
