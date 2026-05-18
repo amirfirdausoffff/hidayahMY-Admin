@@ -7,7 +7,6 @@ import {
   Bell, MessageSquareText, LogOut, ChevronDown, ChevronRight,
   Plus, Trash2, Upload, Search, Check, X, Play,
   CalendarDays, Tag, Edit3, ToggleLeft, ToggleRight, AlertTriangle, Ban, Eye,
-  BarChart3, BookOpen, TrendingUp, Clock, Star,
 } from 'lucide-react';
 
 const API_URL = 'https://api.hidayahmy.com';
@@ -1244,278 +1243,6 @@ function CategoriesPage({ session, showToast }) {
   );
 }
 
-// ─── Prayer Stats ───
-function PrayerStatsPage({ session }) {
-  const [stats, setStats] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [period, setPeriod] = useState('30');
-
-  useEffect(() => {
-    setLoading(true);
-    apiFetch(`/api/admin/prayer-stats?days=${period}`, session)
-      .then((d) => { setStats(d); setLoading(false); })
-      .catch(() => setLoading(false));
-  }, [session, period]);
-
-  if (loading) return <div className="flex justify-center py-20 text-gray-400">Loading...</div>;
-
-  const overviewCards = [
-    { label: 'Active Pray-ers', value: stats?.activeUsers || 0, color: 'text-emerald-600', bg: 'bg-emerald-50', icon: Users },
-    { label: 'Total Check-ins', value: stats?.totalCheckins || 0, color: 'text-blue-600', bg: 'bg-blue-50', icon: Check },
-    { label: 'Avg Completion', value: `${stats?.avgCompletion || 0}%`, color: 'text-violet-600', bg: 'bg-violet-50', icon: TrendingUp },
-    { label: 'Perfect Days', value: stats?.perfectDays || 0, color: 'text-amber-600', bg: 'bg-amber-50', icon: Star },
-  ];
-
-  const prayers = ['subuh', 'zohor', 'asar', 'maghrib', 'isyak'];
-  const prayerStats = stats?.prayerBreakdown || {};
-
-  return (
-    <div className="space-y-4">
-      {/* Period filter */}
-      <div className="flex gap-1.5">
-        {[{ value: '7', label: '7 Days' }, { value: '30', label: '30 Days' }, { value: '90', label: '90 Days' }].map((p) => (
-          <button key={p.value} onClick={() => setPeriod(p.value)}
-            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition ${period === p.value ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
-            {p.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Overview cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {overviewCards.map((st) => (
-          <div key={st.label} className="bg-white rounded-xl border border-gray-100 p-5 hover:shadow-sm transition-shadow">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">{st.label}</span>
-              <div className={`${st.bg} ${st.color} p-2 rounded-lg`}><st.icon size={18} /></div>
-            </div>
-            <div className="text-3xl font-bold text-gray-900">{typeof st.value === 'number' ? st.value.toLocaleString() : st.value}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Prayer breakdown */}
-      <div className="bg-white rounded-xl border border-gray-100">
-        <div className="p-5 border-b border-gray-50">
-          <h2 className="text-sm font-semibold text-gray-900">Prayer Completion Rate</h2>
-        </div>
-        <div className="p-5 space-y-4">
-          {prayers.map((prayer) => {
-            const pct = prayerStats[prayer] || 0;
-            const colors = {
-              subuh: 'bg-indigo-500', zohor: 'bg-blue-500', asar: 'bg-cyan-500',
-              maghrib: 'bg-orange-500', isyak: 'bg-violet-500',
-            };
-            return (
-              <div key={prayer} className="flex items-center gap-4">
-                <span className="text-sm font-medium text-gray-700 w-20 capitalize">{prayer}</span>
-                <div className="flex-1 bg-gray-100 rounded-full h-3 overflow-hidden">
-                  <div className={`h-full rounded-full ${colors[prayer]} transition-all duration-500`} style={{ width: `${pct}%` }} />
-                </div>
-                <span className="text-sm font-semibold text-gray-600 w-12 text-right">{pct}%</span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Top streaks */}
-      {stats?.topStreaks && stats.topStreaks.length > 0 && (
-        <div className="bg-white rounded-xl border border-gray-100">
-          <div className="p-5 border-b border-gray-50">
-            <h2 className="text-sm font-semibold text-gray-900">Top Streaks</h2>
-          </div>
-          <table className="w-full">
-            <thead><tr className="border-b border-gray-50">
-              <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">User</th>
-              <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Current Streak</th>
-              <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Longest Streak</th>
-              <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Perfect Days</th>
-            </tr></thead>
-            <tbody>
-              {stats.topStreaks.map((user, i) => (
-                <tr key={i} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50">
-                  <td className="px-5 py-3 text-sm text-gray-900 font-medium">{user.name || user.email || '-'}</td>
-                  <td className="px-5 py-3">
-                    <span className="text-xs bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded font-medium">{user.currentStreak || 0} days</span>
-                  </td>
-                  <td className="px-5 py-3 text-sm text-gray-500">{user.longestStreak || 0} days</td>
-                  <td className="px-5 py-3 text-sm text-gray-500">{user.perfectDays || 0}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── Daily Quotes ───
-function QuotesPage({ session, showToast }) {
-  const [quotes, setQuotes] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
-  const [editingId, setEditingId] = useState(null);
-  const [formData, setFormData] = useState({ text_en: '', text_ms: '', source: '', category: 'quran' });
-  const [formError, setFormError] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [filter, setFilter] = useState('all');
-
-  const categories = [
-    { value: 'quran', label: 'Quran' },
-    { value: 'hadith', label: 'Hadith' },
-    { value: 'scholar', label: 'Scholar' },
-    { value: 'wisdom', label: 'Wisdom' },
-  ];
-
-  const loadQuotes = useCallback(() => {
-    setLoading(true);
-    apiFetch('/api/admin/quotes', session)
-      .then((d) => { setQuotes(d.quotes || []); setLoading(false); })
-      .catch(() => setLoading(false));
-  }, [session]);
-
-  useEffect(() => { loadQuotes(); }, [loadQuotes]);
-
-  const resetForm = () => { setFormData({ text_en: '', text_ms: '', source: '', category: 'quran' }); setEditingId(null); setShowForm(false); setFormError(''); };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!formData.text_en.trim() && !formData.text_ms.trim()) { setFormError('At least one translation is required'); return; }
-    setSubmitting(true); setFormError('');
-
-    const payload = {
-      text_en: formData.text_en.trim(),
-      text_ms: formData.text_ms.trim(),
-      source: formData.source.trim(),
-      category: formData.category,
-    };
-
-    let d;
-    if (editingId) {
-      d = await apiFetch(`/api/admin/quotes/${editingId}`, session, { method: 'PUT', body: JSON.stringify(payload) });
-    } else {
-      d = await apiFetch('/api/admin/quotes', session, { method: 'POST', body: JSON.stringify(payload) });
-    }
-
-    if (d.success) {
-      showToast(editingId ? 'Quote updated' : 'Quote added');
-      resetForm();
-      loadQuotes();
-    } else setFormError(d.error || 'Failed');
-    setSubmitting(false);
-  };
-
-  const handleEdit = (quote) => {
-    setFormData({
-      text_en: quote.text_en || '',
-      text_ms: quote.text_ms || '',
-      source: quote.source || '',
-      category: quote.category || 'quran',
-    });
-    setEditingId(quote.id);
-    setShowForm(true);
-    setFormError('');
-  };
-
-  const handleDelete = async (quote) => {
-    if (!confirm('Delete this quote?')) return;
-    const d = await apiFetch(`/api/admin/quotes/${quote.id}`, session, { method: 'DELETE' });
-    if (d.success) { showToast('Quote deleted'); loadQuotes(); }
-    else alert(d.error || 'Failed to delete');
-  };
-
-  const filtered = filter === 'all' ? quotes : quotes.filter((q) => q.category === filter);
-
-  return (
-    <div className="bg-white rounded-xl border border-gray-100">
-      <div className="flex items-center justify-between p-5 border-b border-gray-50">
-        <div className="flex items-center gap-3">
-          <h2 className="text-sm font-semibold text-gray-900">Daily Quotes</h2>
-          <span className="text-xs text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full">{quotes.length}</span>
-        </div>
-        <button onClick={() => { if (showForm && !editingId) { resetForm(); } else { resetForm(); setShowForm(true); } }}
-          className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg transition ${showForm ? 'bg-gray-100 text-gray-600' : 'bg-gray-900 text-white hover:bg-gray-800'}`}>
-          {showForm ? 'Cancel' : <><Plus size={14} /> Add Quote</>}
-        </button>
-      </div>
-
-      {showForm && (
-        <div className="p-5 border-b border-gray-50 bg-gray-50/50">
-          <form onSubmit={handleSubmit} className="max-w-lg space-y-4">
-            <h3 className="text-xs font-semibold text-gray-700">{editingId ? 'Edit Quote' : 'New Quote'}</h3>
-            {formError && <div className="text-red-600 text-xs bg-red-50 px-3 py-2 rounded-lg">{formError}</div>}
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Text (English)</label>
-              <textarea className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-gray-400 min-h-[70px] resize-y font-[inherit]"
-                placeholder="Enter quote in English..." value={formData.text_en} onChange={(e) => setFormData({ ...formData, text_en: e.target.value })} />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Text (Bahasa Melayu)</label>
-              <textarea className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-gray-400 min-h-[70px] resize-y font-[inherit]"
-                placeholder="Masukkan petikan dalam BM..." value={formData.text_ms} onChange={(e) => setFormData({ ...formData, text_ms: e.target.value })} />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Source</label>
-                <input className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-gray-400"
-                  placeholder="e.g. Surah Al-Baqarah 2:286" value={formData.source} onChange={(e) => setFormData({ ...formData, source: e.target.value })} />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Category</label>
-                <select className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-gray-400 cursor-pointer"
-                  value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value })}>
-                  {categories.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
-                </select>
-              </div>
-            </div>
-            <button type="submit" disabled={submitting} className="px-4 py-2 bg-gray-900 text-white text-xs font-medium rounded-lg hover:bg-gray-800 disabled:opacity-50">
-              {submitting ? 'Saving...' : editingId ? 'Update Quote' : 'Add Quote'}
-            </button>
-          </form>
-        </div>
-      )}
-
-      <div className="p-5">
-        <div className="flex gap-1.5 mb-4">
-          {[{ value: 'all', label: 'All' }, ...categories].map((f) => (
-            <button key={f.value} onClick={() => setFilter(f.value)}
-              className={`px-3 py-1.5 text-xs font-medium rounded-lg transition ${filter === f.value ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
-              {f.label}
-            </button>
-          ))}
-        </div>
-
-        {loading ? <div className="text-gray-400 text-center py-12 text-sm">Loading...</div> :
-         filtered.length === 0 ? <div className="text-gray-400 text-center py-12 text-sm">No quotes yet</div> : (
-          <div className="space-y-3">
-            {filtered.map((quote) => (
-              <div key={quote.id} className="group border border-gray-100 rounded-lg p-4 hover:shadow-sm transition">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    {quote.text_en && <p className="text-sm text-gray-900 mb-1">{quote.text_en}</p>}
-                    {quote.text_ms && <p className="text-sm text-gray-500 italic">{quote.text_ms}</p>}
-                    <div className="flex items-center gap-2 mt-2">
-                      {quote.source && <span className="text-[11px] text-gray-400">{quote.source}</span>}
-                      <span className="text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">{quote.category || 'general'}</span>
-                      {quote.created_at && <span className="text-[11px] text-gray-300">{new Date(quote.created_at).toLocaleDateString()}</span>}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition">
-                    <button onClick={() => handleEdit(quote)} className="text-gray-400 hover:text-gray-600 transition"><Edit3 size={14} /></button>
-                    <button onClick={() => handleDelete(quote)} className="text-red-400 hover:text-red-600 transition"><Trash2 size={14} /></button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
 // ─── Navigation config ───
 const navSections = [
   {
@@ -1534,7 +1261,6 @@ const navSections = [
     items: [
       { id: 'backgrounds', label: 'Backgrounds', icon: Image },
       { id: 'azan', label: 'Azan Sounds', icon: Volume2 },
-      { id: 'quotes', label: 'Daily Quotes', icon: BookOpen },
     ],
   },
   {
@@ -1542,12 +1268,6 @@ const navSections = [
     items: [
       { id: 'events', label: 'Events', icon: CalendarDays },
       { id: 'categories', label: 'Categories', icon: Tag },
-    ],
-  },
-  {
-    label: 'Analytics',
-    items: [
-      { id: 'prayer-stats', label: 'Prayer Stats', icon: BarChart3 },
     ],
   },
   {
@@ -1565,10 +1285,8 @@ const pages = {
   team: TeamPage,
   backgrounds: BackgroundsPage,
   azan: AzanSoundsPage,
-  quotes: QuotesPage,
   events: EventsPage,
   categories: CategoriesPage,
-  'prayer-stats': PrayerStatsPage,
   notifications: NotificationsPage,
   feedback: FeedbackPage,
 };
