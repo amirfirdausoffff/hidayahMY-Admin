@@ -7,6 +7,7 @@ import {
   Bell, MessageSquareText, LogOut, ChevronDown, ChevronRight,
   Plus, Trash2, Upload, Search, Check, X, Play,
   CalendarDays, Tag, Edit3, ToggleLeft, ToggleRight, AlertTriangle, Ban, Eye,
+  BookOpen, Filter,
 } from 'lucide-react';
 
 const API_URL = 'https://api.hidayahmy.com';
@@ -515,6 +516,198 @@ function AzanSoundsPage({ session, showToast }) {
                 <td className="px-5 py-3 text-sm text-gray-400">{new Date(sound.created_at).toLocaleDateString()}</td>
                 <td className="px-5 py-3 text-right">
                   <button onClick={() => handleDelete(sound)} className="text-red-400 hover:text-red-600 transition"><Trash2 size={14} /></button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
+
+// ─── Iqra' Audio ───
+function IqraAudioPage({ session, showToast }) {
+  const [audioItems, setAudioItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [arabicText, setArabicText] = useState('');
+  const [level, setLevel] = useState('');
+  const [audioFile, setAudioFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState('');
+  const [filterLevel, setFilterLevel] = useState('all');
+  const [search, setSearch] = useState('');
+
+  const loadAudioItems = useCallback(() => {
+    setLoading(true);
+    apiFetch('/api/iqra-audio', session)
+      .then((d) => {
+        if (d.success && d.audioMap) {
+          const items = Object.entries(d.audioMap).map(([hash, entry]) => ({ text_hash: hash, ...entry }));
+          setAudioItems(items);
+        }
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, [session]);
+
+  useEffect(() => { loadAudioItems(); }, [loadAudioItems]);
+
+  const handleFileSelect = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) { setError('Audio must be under 10MB'); return; }
+    setAudioFile(file); setError('');
+  };
+
+  const md5Hash = (text) => {
+    // Simple hash for display — actual hash is computed server-side
+    let hash = 0;
+    for (let i = 0; i < text.length; i++) {
+      const chr = text.charCodeAt(i);
+      hash = ((hash << 5) - hash) + chr;
+      hash |= 0;
+    }
+    return Math.abs(hash).toString(16).padStart(8, '0').slice(0, 12);
+  };
+
+  const handleUpload = async (e) => {
+    e.preventDefault();
+    if (!arabicText.trim() || !audioFile) { setError('Arabic text and audio file are required'); return; }
+    setUploading(true); setError('');
+
+    try {
+      const textHash = md5Hash(arabicText.trim());
+      const ext = audioFile.name.split('.').pop();
+      const fileName = `iqra/${textHash}.${ext}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('iqra-audio')
+        .upload(fileName, audioFile, { contentType: audioFile.type, upsert: true });
+
+      if (uploadError) { setError(uploadError.message); setUploading(false); return; }
+
+      const { data: urlData } = supabase.storage.from('iqra-audio').getPublicUrl(fileName);
+
+      const d = await apiFetch('/api/iqra-audio', session, {
+        method: 'POST',
+        body: JSON.stringify({
+          text_hash: textHash,
+          arabic_text: arabicText.trim(),
+          file_url: urlData.publicUrl,
+          storage_path: fileName,
+          level: level ? parseInt(level) : null,
+        }),
+      });
+
+      if (d.success) {
+        showToast(`Audio for "${arabicText}" uploaded`);
+        setArabicText(''); setLevel(''); setAudioFile(null); setShowForm(false);
+        loadAudioItems();
+      } else setError(d.error || 'Save failed');
+    } catch (err) {
+      setError(err.message || 'Upload failed');
+    }
+    setUploading(false);
+  };
+
+  const handleDelete = async (item) => {
+    if (!confirm(`Delete audio for "${item.arabic_text}"?`)) return;
+    const d = await apiFetch(`/api/iqra-audio/${item.id || item.text_hash}`, session, { method: 'DELETE' });
+    if (d.success) { showToast(`Audio for "${item.arabic_text}" deleted`); loadAudioItems(); }
+    else alert(d.error || 'Failed to delete');
+  };
+
+  const filtered = audioItems.filter((item) => {
+    if (filterLevel !== 'all' && item.level !== parseInt(filterLevel)) return false;
+    if (search && !item.arabic_text.includes(search)) return false;
+    return true;
+  });
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-100">
+      <div className="flex items-center justify-between p-5 border-b border-gray-50">
+        <div className="flex items-center gap-3">
+          <h2 className="text-sm font-semibold text-gray-900">Iqra&apos; Audio</h2>
+          <span className="text-xs text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full">{audioItems.length} total</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <button onClick={() => { setShowForm(!showForm); setError(''); }} className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg transition ${showForm ? 'bg-gray-100 text-gray-600' : 'bg-gray-900 text-white hover:bg-gray-800'}`}>
+            {showForm ? 'Cancel' : <><Upload size={14} /> Upload Audio</>}
+          </button>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="flex items-center gap-3 p-4 border-b border-gray-50 bg-gray-50/30">
+        <div className="flex items-center gap-1.5">
+          <Filter size={14} className="text-gray-400" />
+          <select value={filterLevel} onChange={(e) => setFilterLevel(e.target.value)} className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 outline-none focus:border-gray-400 bg-white">
+            <option value="all">All Levels</option>
+            <option value="1">Level 1 — Huruf & Fathah</option>
+            <option value="2">Level 2 — Sambung Huruf</option>
+            <option value="3">Level 3 — Kasrah & Dhammah</option>
+            <option value="4">Level 4 — Tanwin & Sukun</option>
+            <option value="5">Level 5 — Mad & Waqaf</option>
+            <option value="6">Level 6 — Bacaan Al-Quran</option>
+          </select>
+        </div>
+        <div className="relative flex-1 max-w-xs">
+          <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search Arabic text..." className="w-full pl-8 pr-3 py-1.5 text-xs border border-gray-200 rounded-lg outline-none focus:border-gray-400" dir="rtl" />
+        </div>
+        <span className="text-xs text-gray-400">{filtered.length} shown</span>
+      </div>
+
+      {showForm && (
+        <div className="p-5 border-b border-gray-50 bg-gray-50/50">
+          <form onSubmit={handleUpload} className="max-w-md space-y-4">
+            {error && <div className="text-red-600 text-xs bg-red-50 px-3 py-2 rounded-lg">{error}</div>}
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Arabic Text</label>
+              <input className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-gray-400" dir="rtl" placeholder="e.g. بَ" value={arabicText} onChange={(e) => setArabicText(e.target.value)} required />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Level (1-6)</label>
+              <select className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-gray-400" value={level} onChange={(e) => setLevel(e.target.value)}>
+                <option value="">Select level</option>
+                <option value="1">Level 1</option>
+                <option value="2">Level 2</option>
+                <option value="3">Level 3</option>
+                <option value="4">Level 4</option>
+                <option value="5">Level 5</option>
+                <option value="6">Level 6</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Audio File (max 10MB, MP3/WAV)</label>
+              <input type="file" accept="audio/mp3,audio/mpeg,audio/wav" onChange={handleFileSelect} className="text-sm text-gray-500" />
+            </div>
+            <button type="submit" disabled={uploading} className="px-4 py-2 bg-gray-900 text-white text-xs font-medium rounded-lg hover:bg-gray-800 disabled:opacity-50">
+              {uploading ? 'Uploading...' : 'Upload Audio'}
+            </button>
+          </form>
+        </div>
+      )}
+
+      {loading ? <div className="text-gray-400 text-center py-12 text-sm">Loading...</div> :
+       filtered.length === 0 ? <div className="text-gray-400 text-center py-12 text-sm">{audioItems.length === 0 ? "No Iqra' audio uploaded yet" : 'No items match filter'}</div> : (
+        <table className="w-full">
+          <thead><tr className="border-b border-gray-50">
+            <th className="text-right px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Arabic</th>
+            <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Preview</th>
+            <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Level</th>
+            <th className="px-5 py-3"></th>
+          </tr></thead>
+          <tbody>
+            {filtered.map((item, idx) => (
+              <tr key={item.text_hash || idx} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50">
+                <td className="px-5 py-3 text-lg font-medium text-gray-900" dir="rtl" style={{ fontFamily: "'Scheherazade New', serif" }}>{item.arabic_text}</td>
+                <td className="px-5 py-3"><audio controls src={item.file_url} className="h-8 max-w-[220px]" /></td>
+                <td className="px-5 py-3"><span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded">{item.level || '-'}</span></td>
+                <td className="px-5 py-3 text-right">
+                  <button onClick={() => handleDelete(item)} className="text-red-400 hover:text-red-600 transition"><Trash2 size={14} /></button>
                 </td>
               </tr>
             ))}
@@ -1261,6 +1454,7 @@ const navSections = [
     items: [
       { id: 'backgrounds', label: 'Backgrounds', icon: Image },
       { id: 'azan', label: 'Azan Sounds', icon: Volume2 },
+      { id: 'iqra-audio', label: "Iqra' Audio", icon: BookOpen },
     ],
   },
   {
@@ -1285,6 +1479,7 @@ const pages = {
   team: TeamPage,
   backgrounds: BackgroundsPage,
   azan: AzanSoundsPage,
+  'iqra-audio': IqraAudioPage,
   events: EventsPage,
   categories: CategoriesPage,
   notifications: NotificationsPage,
