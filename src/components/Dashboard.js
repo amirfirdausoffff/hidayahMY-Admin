@@ -7,7 +7,7 @@ import {
   Bell, MessageSquareText, LogOut, ChevronDown, ChevronRight,
   Plus, Trash2, Upload, Search, Check, X, Play,
   CalendarDays, Tag, Edit3, ToggleLeft, ToggleRight, AlertTriangle, Ban, Eye,
-  BookOpen, Filter,
+  BookOpen, Filter, ChevronLeft,
 } from 'lucide-react';
 
 const API_URL = 'https://api.hidayahmy.com';
@@ -28,6 +28,49 @@ function Toast({ message, type = 'success', onClose }) {
       {type === 'success' ? <Check size={16} /> : <X size={16} />}
       {message}
       <button onClick={onClose} className="ml-2 opacity-50 hover:opacity-100"><X size={14} /></button>
+    </div>
+  );
+}
+
+// ─── Pagination ───
+const PER_PAGE = 10;
+
+function paginate(items, page) {
+  const start = (page - 1) * PER_PAGE;
+  return items.slice(start, start + PER_PAGE);
+}
+
+function Pagination({ total, page, onPageChange }) {
+  const totalPages = Math.max(1, Math.ceil(total / PER_PAGE));
+  if (totalPages <= 1) return null;
+  return (
+    <div className="flex items-center justify-between px-5 py-3 border-t border-gray-50">
+      <span className="text-xs text-gray-400">Page {page} of {totalPages} ({total} items)</span>
+      <div className="flex items-center gap-1">
+        <button disabled={page <= 1} onClick={() => onPageChange(page - 1)}
+          className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 disabled:opacity-30 disabled:hover:bg-transparent transition">
+          <ChevronLeft size={14} />
+        </button>
+        {Array.from({ length: totalPages }, (_, i) => i + 1)
+          .filter((p) => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
+          .reduce((acc, p, i, arr) => {
+            if (i > 0 && p - arr[i - 1] > 1) acc.push('...');
+            acc.push(p);
+            return acc;
+          }, [])
+          .map((p, i) =>
+            p === '...' ? <span key={`dot-${i}`} className="px-1 text-xs text-gray-300">...</span> : (
+              <button key={p} onClick={() => onPageChange(p)}
+                className={`min-w-[28px] h-7 text-xs font-medium rounded-lg transition ${p === page ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-100'}`}>
+                {p}
+              </button>
+            )
+          )}
+        <button disabled={page >= totalPages} onClick={() => onPageChange(page + 1)}
+          className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 disabled:opacity-30 disabled:hover:bg-transparent transition">
+          <ChevronRight size={14} />
+        </button>
+      </div>
     </div>
   );
 }
@@ -88,6 +131,7 @@ function CustomersPage({ session }) {
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     apiFetch('/api/admin/list-users?role=customer', session)
@@ -100,6 +144,7 @@ function CustomersPage({ session }) {
   const filtered = search
     ? customers.filter((u) => (u.name || '').toLowerCase().includes(search.toLowerCase()) || (u.email || '').toLowerCase().includes(search.toLowerCase()))
     : customers;
+  const paged = paginate(filtered, page);
 
   return (
     <div className="bg-white rounded-xl border border-gray-100">
@@ -110,7 +155,7 @@ function CustomersPage({ session }) {
         </div>
         <div className="relative">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300" />
-          <input className="pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-gray-400 w-56" placeholder="Search..." value={search} onChange={(e) => setSearch(e.target.value)} />
+          <input className="pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-gray-400 w-56" placeholder="Search..." value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
         </div>
       </div>
       {filtered.length === 0 ? <p className="text-gray-400 text-center py-12 text-sm">No customers found</p> : (
@@ -123,7 +168,7 @@ function CustomersPage({ session }) {
               <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Joined</th>
             </tr></thead>
             <tbody>
-              {filtered.map((u) => (
+              {paged.map((u) => (
                 <tr key={u.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50">
                   <td className="px-5 py-3 text-sm text-gray-900 font-medium">{u.name || '-'}</td>
                   <td className="px-5 py-3 text-sm text-gray-500">{u.email}</td>
@@ -135,6 +180,7 @@ function CustomersPage({ session }) {
           </table>
         </div>
       )}
+      <Pagination total={filtered.length} page={page} onPageChange={setPage} />
     </div>
   );
 }
@@ -238,6 +284,7 @@ function BackgroundsPage({ session, showToast }) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
   const [filter, setFilter] = useState('all');
+  const [page, setPage] = useState(1);
 
   const loadBackgrounds = useCallback(() => {
     setLoading(true);
@@ -300,6 +347,7 @@ function BackgroundsPage({ session, showToast }) {
   };
 
   const filtered = filter === 'all' ? backgrounds : backgrounds.filter((b) => b.category === filter || b.category === 'both');
+  const paged = paginate(filtered, page);
   const filters = [{ value: 'all', label: 'All' }, { value: 'dashboard', label: 'Dashboard' }, { value: 'prayer', label: 'Prayer' }];
 
   return (
@@ -353,7 +401,7 @@ function BackgroundsPage({ session, showToast }) {
         <div className="p-5">
           <div className="flex gap-1.5 mb-4">
             {filters.map((f) => (
-              <button key={f.value} onClick={() => setFilter(f.value)}
+              <button key={f.value} onClick={() => { setFilter(f.value); setPage(1); }}
                 className={`px-3 py-1.5 text-xs font-medium rounded-lg transition ${filter === f.value ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
                 {f.label}
               </button>
@@ -363,7 +411,7 @@ function BackgroundsPage({ session, showToast }) {
           {loading ? <div className="text-gray-400 text-center py-12 text-sm">Loading...</div> :
            filtered.length === 0 ? <div className="text-gray-400 text-center py-12 text-sm">No backgrounds yet</div> : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-              {filtered.map((bg) => (
+              {paged.map((bg) => (
                 <div key={bg.id} className="group border border-gray-100 rounded-lg overflow-hidden hover:shadow-sm transition">
                   <div className="w-full h-44 bg-gray-100">
                     <img src={bg.image_url} alt={bg.name} className="w-full h-full object-cover" />
@@ -379,6 +427,7 @@ function BackgroundsPage({ session, showToast }) {
               ))}
             </div>
           )}
+          <Pagination total={filtered.length} page={page} onPageChange={setPage} />
         </div>
       </div>
     </div>
@@ -390,6 +439,7 @@ function AzanSoundsPage({ session, showToast }) {
   const [azanSounds, setAzanSounds] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [page, setPage] = useState(1);
   const [name, setName] = useState('');
   const [audioFile, setAudioFile] = useState(null);
   const [durationSeconds, setDurationSeconds] = useState(null);
@@ -508,7 +558,7 @@ function AzanSoundsPage({ session, showToast }) {
             <th className="px-5 py-3"></th>
           </tr></thead>
           <tbody>
-            {azanSounds.map((sound) => (
+            {paginate(azanSounds, page).map((sound) => (
               <tr key={sound.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50">
                 <td className="px-5 py-3 text-sm text-gray-900 font-medium">{sound.name}</td>
                 <td className="px-5 py-3"><audio controls src={sound.file_url} className="h-8 max-w-[220px]" /></td>
@@ -522,6 +572,7 @@ function AzanSoundsPage({ session, showToast }) {
           </tbody>
         </table>
       )}
+      <Pagination total={azanSounds.length} page={page} onPageChange={setPage} />
     </div>
   );
 }
@@ -538,6 +589,7 @@ function IqraAudioPage({ session, showToast }) {
   const [error, setError] = useState('');
   const [filterLevel, setFilterLevel] = useState('all');
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
 
   const loadAudioItems = useCallback(() => {
     setLoading(true);
@@ -643,7 +695,7 @@ function IqraAudioPage({ session, showToast }) {
       <div className="flex items-center gap-3 p-4 border-b border-gray-50 bg-gray-50/30">
         <div className="flex items-center gap-1.5">
           <Filter size={14} className="text-gray-400" />
-          <select value={filterLevel} onChange={(e) => setFilterLevel(e.target.value)} className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 outline-none focus:border-gray-400 bg-white">
+          <select value={filterLevel} onChange={(e) => { setFilterLevel(e.target.value); setPage(1); }} className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 outline-none focus:border-gray-400 bg-white">
             <option value="all">All Levels</option>
             <option value="1">Level 1 — Huruf & Fathah</option>
             <option value="2">Level 2 — Sambung Huruf</option>
@@ -655,7 +707,7 @@ function IqraAudioPage({ session, showToast }) {
         </div>
         <div className="relative flex-1 max-w-xs">
           <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search Arabic text..." className="w-full pl-8 pr-3 py-1.5 text-xs border border-gray-200 rounded-lg outline-none focus:border-gray-400" dir="rtl" />
+          <input value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} placeholder="Search Arabic text..." className="w-full pl-8 pr-3 py-1.5 text-xs border border-gray-200 rounded-lg outline-none focus:border-gray-400" dir="rtl" />
         </div>
         <span className="text-xs text-gray-400">{filtered.length} shown</span>
       </div>
@@ -701,7 +753,7 @@ function IqraAudioPage({ session, showToast }) {
             <th className="px-5 py-3"></th>
           </tr></thead>
           <tbody>
-            {filtered.map((item, idx) => (
+            {paginate(filtered, page).map((item, idx) => (
               <tr key={item.text_hash || idx} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50">
                 <td className="px-5 py-3 text-lg font-medium text-gray-900" dir="rtl" style={{ fontFamily: "'Scheherazade New', serif" }}>{item.arabic_text}</td>
                 <td className="px-5 py-3"><audio controls src={item.file_url} className="h-8 max-w-[220px]" /></td>
@@ -714,6 +766,7 @@ function IqraAudioPage({ session, showToast }) {
           </tbody>
         </table>
       )}
+      <Pagination total={filtered.length} page={page} onPageChange={setPage} />
     </div>
   );
 }
@@ -732,6 +785,7 @@ function NotificationsPage({ session, showToast }) {
   const [error, setError] = useState('');
   const [history, setHistory] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
+  const [historyPage, setHistoryPage] = useState(1);
 
   const topics = [
     { value: 'general', label: 'General' },
@@ -872,7 +926,7 @@ function NotificationsPage({ session, showToast }) {
               <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Date</th>
             </tr></thead>
             <tbody>
-              {history.map((n) => (
+              {paginate(history, historyPage).map((n) => (
                 <tr key={n.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50">
                   <td className="px-5 py-3 text-sm text-gray-900 font-medium max-w-[180px] truncate">{n.title}</td>
                   <td className="px-5 py-3 text-sm text-gray-500 max-w-[260px] truncate">{n.body}</td>
@@ -883,6 +937,7 @@ function NotificationsPage({ session, showToast }) {
             </tbody>
           </table>
         )}
+        <Pagination total={history.length} page={historyPage} onPageChange={setHistoryPage} />
       </div>
     </div>
   );
@@ -895,6 +950,7 @@ function FeedbackPage({ session, showToast }) {
   const [filter, setFilter] = useState('all');
   const [selected, setSelected] = useState(null);
   const [resolving, setResolving] = useState(false);
+  const [page, setPage] = useState(1);
 
   const loadFeedback = useCallback(() => {
     apiFetch('/api/feedback', session)
@@ -928,7 +984,7 @@ function FeedbackPage({ session, showToast }) {
           </div>
           <div className="flex gap-1.5">
             {[{ value: 'all', label: 'All' }, { value: 'pending', label: 'Pending' }, { value: 'resolved', label: 'Resolved' }].map((f) => (
-              <button key={f.value} onClick={() => setFilter(f.value)}
+              <button key={f.value} onClick={() => { setFilter(f.value); setPage(1); }}
                 className={`px-3 py-1.5 text-xs font-medium rounded-lg transition ${filter === f.value ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
                 {f.label}
               </button>
@@ -948,7 +1004,7 @@ function FeedbackPage({ session, showToast }) {
               <th className="px-5 py-3"></th>
             </tr></thead>
             <tbody>
-              {filtered.map((item) => (
+              {paginate(filtered, page).map((item) => (
                 <tr key={item.id} onClick={() => setSelected(selected?.id === item.id ? null : item)} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50 cursor-pointer">
                   <td className="px-5 py-3 text-sm text-gray-500">{item.email || '-'}</td>
                   <td className="px-5 py-3"><span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded">{item.feature || '-'}</span></td>
@@ -972,6 +1028,7 @@ function FeedbackPage({ session, showToast }) {
             </tbody>
           </table>
         )}
+        <Pagination total={filtered.length} page={page} onPageChange={setPage} />
       </div>
 
       {/* Detail panel */}
@@ -1024,6 +1081,7 @@ function EventsPage({ session, showToast }) {
   const [selected, setSelected] = useState(null);
   const [rejectionReason, setRejectionReason] = useState('');
   const [actionLoading, setActionLoading] = useState(null);
+  const [page, setPage] = useState(1);
 
   const loadEvents = useCallback(() => {
     apiFetch('/api/events?status=all&limit=100', session)
@@ -1101,7 +1159,7 @@ function EventsPage({ session, showToast }) {
           </div>
           <div className="flex gap-1.5">
             {filters.map((f) => (
-              <button key={f.value} onClick={() => setFilter(f.value)}
+              <button key={f.value} onClick={() => { setFilter(f.value); setPage(1); }}
                 className={`px-3 py-1.5 text-xs font-medium rounded-lg transition flex items-center gap-1.5 ${filter === f.value ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
                 {f.label}
                 {f.count > 0 && (
@@ -1127,7 +1185,7 @@ function EventsPage({ session, showToast }) {
                 <th className="px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider text-right">Actions</th>
               </tr></thead>
               <tbody>
-                {filtered.map((evt) => (
+                {paginate(filtered, page).map((evt) => (
                   <tr key={evt.id} onClick={() => { setSelected(selected?.id === evt.id ? null : evt); setRejectionReason(''); }}
                     className={`border-b border-gray-50 last:border-0 hover:bg-gray-50/50 cursor-pointer ${selected?.id === evt.id ? 'bg-gray-50/80' : ''}`}>
                     <td className="px-5 py-3 text-sm text-gray-900 font-medium max-w-[200px] truncate">{evt.title}</td>
@@ -1177,6 +1235,7 @@ function EventsPage({ session, showToast }) {
             </table>
           </div>
         )}
+        <Pagination total={filtered.length} page={page} onPageChange={setPage} />
       </div>
 
       {/* Detail panel */}
@@ -1295,6 +1354,7 @@ function CategoriesPage({ session, showToast }) {
   const [formData, setFormData] = useState({ name: '', name_ms: '', icon: '', sort_order: 0 });
   const [formError, setFormError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [page, setPage] = useState(1);
 
   const loadCategories = useCallback(() => {
     apiFetch('/api/event-categories', session)
@@ -1408,7 +1468,7 @@ function CategoriesPage({ session, showToast }) {
             <th className="px-5 py-3"></th>
           </tr></thead>
           <tbody>
-            {categories.map((cat) => (
+            {paginate(categories, page).map((cat) => (
               <tr key={cat.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50">
                 <td className="px-5 py-3 text-sm text-gray-900 font-medium">{cat.name}</td>
                 <td className="px-5 py-3 text-sm text-gray-500">{cat.name_ms || '-'}</td>
@@ -1432,6 +1492,7 @@ function CategoriesPage({ session, showToast }) {
           </tbody>
         </table>
       )}
+      <Pagination total={categories.length} page={page} onPageChange={setPage} />
     </div>
   );
 }
