@@ -7,7 +7,7 @@ import {
   Bell, MessageSquareText, LogOut, ChevronDown, ChevronRight,
   Plus, Trash2, Upload, Search, Check, X, Play,
   CalendarDays, Tag, Edit3, ToggleLeft, ToggleRight, AlertTriangle, Ban, Eye,
-  BookOpen, Filter, ChevronLeft,
+  BookOpen, Filter, ChevronLeft, Construction,
 } from 'lucide-react';
 
 const API_URL = 'https://api.hidayahmy.com';
@@ -76,11 +76,16 @@ function Pagination({ total, page, onPageChange }) {
 }
 
 // ─── Dashboard ───
-function DashboardPage({ session }) {
+function DashboardPage({ session, showToast }) {
   const [firebaseStats, setFirebaseStats] = useState(null);
   const [apiStats, setApiStats] = useState(null);
   const [pendingFeedback, setPendingFeedback] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [maintenance, setMaintenance] = useState({ enabled: false, message_en: '', message_bm: '' });
+  const [maintenanceLoading, setMaintenanceLoading] = useState(false);
+  const [editingMessage, setEditingMessage] = useState(false);
+  const [msgEn, setMsgEn] = useState('');
+  const [msgBm, setMsgBm] = useState('');
 
   useEffect(() => {
     const unsub = onSnapshot(doc(db, 'app_stats', 'dashboard'), (snap) => {
@@ -92,6 +97,57 @@ function DashboardPage({ session }) {
 
   useEffect(() => { apiFetch('/api/admin/stats', session).then(setApiStats).catch(() => {}); }, [session]);
   useEffect(() => { apiFetch('/api/feedback', session).then((d) => { setPendingFeedback((d.feedback || []).filter((f) => f.status === 'pending').length); }).catch(() => {}); }, [session]);
+
+  // Load maintenance status
+  useEffect(() => {
+    apiFetch('/api/app-status', session).then((d) => {
+      if (d.success) {
+        setMaintenance({ enabled: d.enabled, message_en: d.message_en || '', message_bm: d.message_bm || '' });
+        setMsgEn(d.message_en || '');
+        setMsgBm(d.message_bm || '');
+      }
+    }).catch(() => {});
+  }, [session]);
+
+  const toggleMaintenance = async () => {
+    setMaintenanceLoading(true);
+    try {
+      const newEnabled = !maintenance.enabled;
+      const res = await apiFetch('/api/app-status', session, {
+        method: 'PUT',
+        body: JSON.stringify({ enabled: newEnabled, message_en: msgEn, message_bm: msgBm }),
+      });
+      if (res.success) {
+        setMaintenance({ enabled: newEnabled, message_en: msgEn, message_bm: msgBm });
+        showToast(newEnabled ? 'Maintenance mode ON — app is now down for users' : 'Maintenance mode OFF — app is live', 'success');
+      } else {
+        showToast(res.error || 'Failed to update', 'error');
+      }
+    } catch {
+      showToast('Failed to update maintenance status', 'error');
+    }
+    setMaintenanceLoading(false);
+  };
+
+  const saveMessages = async () => {
+    setMaintenanceLoading(true);
+    try {
+      const res = await apiFetch('/api/app-status', session, {
+        method: 'PUT',
+        body: JSON.stringify({ enabled: maintenance.enabled, message_en: msgEn, message_bm: msgBm }),
+      });
+      if (res.success) {
+        setMaintenance({ ...maintenance, message_en: msgEn, message_bm: msgBm });
+        setEditingMessage(false);
+        showToast('Maintenance messages updated', 'success');
+      } else {
+        showToast(res.error || 'Failed to update', 'error');
+      }
+    } catch {
+      showToast('Failed to update messages', 'error');
+    }
+    setMaintenanceLoading(false);
+  };
 
   const fmt = (n) => (n || 0).toLocaleString();
   if (loading) return <div className="flex justify-center py-20 text-gray-400">Loading...</div>;
@@ -116,6 +172,93 @@ function DashboardPage({ session }) {
           </div>
         ))}
       </div>
+
+      {/* Maintenance Mode Card */}
+      <div className={`rounded-xl border p-5 transition-all ${maintenance.enabled ? 'bg-red-50 border-red-200' : 'bg-white border-gray-100'}`}>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className={`p-2 rounded-lg ${maintenance.enabled ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-400'}`}>
+              <Construction size={20} />
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-gray-900">Maintenance Mode</h3>
+              <p className="text-xs text-gray-400 mt-0.5">
+                {maintenance.enabled ? 'App is currently DOWN for all users' : 'App is live and running normally'}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={toggleMaintenance}
+            disabled={maintenanceLoading}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              maintenance.enabled
+                ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                : 'bg-red-600 text-white hover:bg-red-700'
+            } ${maintenanceLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+          >
+            {maintenance.enabled ? <ToggleRight size={16} /> : <ToggleLeft size={16} />}
+            {maintenanceLoading ? 'Updating...' : maintenance.enabled ? 'Turn OFF' : 'Turn ON'}
+          </button>
+        </div>
+
+        {maintenance.enabled && (
+          <div className="bg-red-100/50 border border-red-200 rounded-lg px-4 py-3 mb-4">
+            <div className="flex items-center gap-2 text-red-700 text-xs font-medium">
+              <AlertTriangle size={14} />
+              All users will see a maintenance screen and cannot access the app until you turn this off.
+            </div>
+          </div>
+        )}
+
+        {/* Message Preview / Edit */}
+        <div className="border-t border-gray-100 pt-4 mt-2">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Maintenance Messages</span>
+            <button
+              onClick={() => { if (editingMessage) { saveMessages(); } else { setEditingMessage(true); } }}
+              disabled={maintenanceLoading}
+              className="text-xs font-medium text-gray-500 hover:text-gray-700 flex items-center gap-1"
+            >
+              {editingMessage ? <><Check size={12} /> Save</> : <><Edit3 size={12} /> Edit</>}
+            </button>
+          </div>
+          {editingMessage ? (
+            <div className="space-y-3">
+              <div>
+                <label className="text-[11px] font-medium text-gray-400 mb-1 block">English Message</label>
+                <textarea
+                  value={msgEn}
+                  onChange={(e) => setMsgEn(e.target.value)}
+                  rows={2}
+                  className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 outline-none focus:border-gray-400 resize-none"
+                />
+              </div>
+              <div>
+                <label className="text-[11px] font-medium text-gray-400 mb-1 block">Bahasa Melayu Message</label>
+                <textarea
+                  value={msgBm}
+                  onChange={(e) => setMsgBm(e.target.value)}
+                  rows={2}
+                  className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 outline-none focus:border-gray-400 resize-none"
+                />
+              </div>
+              <button onClick={() => { setEditingMessage(false); setMsgEn(maintenance.message_en); setMsgBm(maintenance.message_bm); }} className="text-xs text-gray-400 hover:text-gray-600">Cancel</button>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <div className="flex gap-2">
+                <span className="text-[10px] font-semibold text-gray-300 uppercase w-8 pt-0.5 shrink-0">EN</span>
+                <p className="text-sm text-gray-600">{maintenance.message_en || '—'}</p>
+              </div>
+              <div className="flex gap-2">
+                <span className="text-[10px] font-semibold text-gray-300 uppercase w-8 pt-0.5 shrink-0">BM</span>
+                <p className="text-sm text-gray-600">{maintenance.message_bm || '—'}</p>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
       <div className="bg-white rounded-xl border border-gray-100 p-5">
         <div className="flex items-center gap-2">
           <div className={`w-2 h-2 rounded-full ${firebaseStats ? 'bg-emerald-500' : 'bg-red-500'}`} />
