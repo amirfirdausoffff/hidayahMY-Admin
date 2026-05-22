@@ -1640,6 +1640,118 @@ function CategoriesPage({ session, showToast }) {
   );
 }
 
+// ─── Khatam Progress (Admin Analytics) ───
+function KhatamPage({ session, showToast }) {
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    apiFetch('/api/khatam/stats', session).then((d) => {
+      if (d.success) setStats(d.stats);
+      else showToast(d.error || 'Failed to load khatam stats', 'error');
+      setLoading(false);
+    }).catch(() => { setLoading(false); });
+  }, [session]);
+
+  if (loading) return <div className="flex justify-center py-20 text-gray-400">Loading...</div>;
+  if (!stats) return <div className="text-gray-400 text-center py-20 text-sm">No khatam data available</div>;
+
+  const fmt = (n) => (n || 0).toLocaleString();
+
+  const summaryCards = [
+    { label: 'Active Khatams', value: fmt(stats.active_count), color: 'text-blue-600', bg: 'bg-blue-50' },
+    { label: 'Completed', value: fmt(stats.completed_count), color: 'text-emerald-600', bg: 'bg-emerald-50' },
+    { label: 'Abandoned', value: fmt(stats.abandoned_count), color: 'text-red-600', bg: 'bg-red-50' },
+    { label: 'Completion Rate', value: `${stats.completion_rate}%`, color: 'text-violet-600', bg: 'bg-violet-50' },
+  ];
+
+  const trackCards = [
+    { label: 'On Track', value: fmt(stats.on_track), color: 'text-emerald-600', bg: 'bg-emerald-50' },
+    { label: 'Behind Schedule', value: fmt(stats.behind_schedule), color: 'text-amber-600', bg: 'bg-amber-50' },
+    { label: 'Avg. Completion', value: stats.avg_completion_days > 0 ? `${stats.avg_completion_days} days` : '-', color: 'text-blue-600', bg: 'bg-blue-50' },
+    { label: 'Active Users', value: fmt(stats.unique_active_users), color: 'text-indigo-600', bg: 'bg-indigo-50' },
+  ];
+
+  const dist = stats.distribution || {};
+  const maxDist = Math.max(1, ...Object.values(dist));
+
+  return (
+    <div className="space-y-6">
+      {/* Summary cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {summaryCards.map((st) => (
+          <div key={st.label} className="bg-white rounded-xl border border-gray-100 p-5 hover:shadow-sm transition-shadow">
+            <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">{st.label}</span>
+            <div className={`text-3xl font-bold mt-2 ${st.color}`}>{st.value}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Track & avg cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {trackCards.map((st) => (
+          <div key={st.label} className="bg-white rounded-xl border border-gray-100 p-5 hover:shadow-sm transition-shadow">
+            <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">{st.label}</span>
+            <div className={`text-2xl font-bold mt-2 ${st.color}`}>{st.value}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Progress distribution */}
+      <div className="bg-white rounded-xl border border-gray-100 p-5">
+        <h3 className="text-sm font-semibold text-gray-900 mb-4">Progress Distribution (Active Khatams)</h3>
+        <div className="space-y-3">
+          {Object.entries(dist).map(([range, count]) => (
+            <div key={range} className="flex items-center gap-3">
+              <span className="text-xs text-gray-500 w-16 shrink-0">{range}%</span>
+              <div className="flex-1 bg-gray-100 rounded-full h-6 overflow-hidden">
+                <div
+                  className="h-full bg-emerald-500 rounded-full flex items-center justify-end pr-2 transition-all"
+                  style={{ width: `${Math.max(2, (count / maxDist) * 100)}%` }}
+                >
+                  {count > 0 && <span className="text-[10px] font-semibold text-white">{count}</span>}
+                </div>
+              </div>
+              <span className="text-xs text-gray-400 w-8 text-right">{count}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Recent completions */}
+      {stats.recent_completions && stats.recent_completions.length > 0 && (
+        <div className="bg-white rounded-xl border border-gray-100">
+          <div className="px-5 py-4 border-b border-gray-50">
+            <h3 className="text-sm font-semibold text-gray-900">Recent Completions</h3>
+          </div>
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-gray-50">
+                <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">User ID</th>
+                <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Started</th>
+                <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Completed</th>
+                <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Duration</th>
+              </tr>
+            </thead>
+            <tbody>
+              {stats.recent_completions.map((k) => (
+                <tr key={k.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50">
+                  <td className="px-5 py-3 text-sm text-gray-500 font-mono">{k.user_id?.slice(0, 8)}...</td>
+                  <td className="px-5 py-3 text-sm text-gray-500">{k.start_date}</td>
+                  <td className="px-5 py-3 text-sm text-gray-500">{k.completed_at?.split('T')[0] || '-'}</td>
+                  <td className="px-5 py-3">
+                    <span className="text-xs bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded font-medium">{k.duration_days} days</span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Navigation config ───
 const navSections = [
   {
@@ -1659,6 +1771,12 @@ const navSections = [
       { id: 'backgrounds', label: 'Backgrounds', icon: Image },
       { id: 'azan', label: 'Azan Sounds', icon: Volume2 },
       { id: 'iqra-audio', label: "Iqra' Audio", icon: BookOpen },
+    ],
+  },
+  {
+    label: 'Quran',
+    items: [
+      { id: 'khatam', label: 'Khatam Progress', icon: BookOpen },
     ],
   },
   {
@@ -1684,6 +1802,7 @@ const pages = {
   backgrounds: BackgroundsPage,
   azan: AzanSoundsPage,
   'iqra-audio': IqraAudioPage,
+  khatam: KhatamPage,
   events: EventsPage,
   categories: CategoriesPage,
   notifications: NotificationsPage,
