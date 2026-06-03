@@ -1752,7 +1752,7 @@ function HafazanPage({ session, showToast }) {
             <tbody>
               {topSurahs.map((s) => (
                 <tr key={s.surah_number} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50">
-                  <td className="px-5 py-3 text-sm text-gray-700 font-medium">Surah {s.surah_number}</td>
+                  <td className="px-5 py-3 text-sm text-gray-700 font-medium">{s.surah_number}. {s.surah_name || `Surah ${s.surah_number}`}</td>
                   <td className="px-5 py-3">
                     <span className="text-xs bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded font-medium">{s.count}</span>
                   </td>
