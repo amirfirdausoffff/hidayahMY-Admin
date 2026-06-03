@@ -1094,6 +1094,8 @@ function FeedbackPage({ session, showToast }) {
   const [selected, setSelected] = useState(null);
   const [resolving, setResolving] = useState(false);
   const [page, setPage] = useState(1);
+  const [resolveItem, setResolveItem] = useState(null);
+  const [resolveMessage, setResolveMessage] = useState('');
 
   const loadFeedback = useCallback(() => {
     apiFetch('/api/feedback', session)
@@ -1103,11 +1105,16 @@ function FeedbackPage({ session, showToast }) {
 
   useEffect(() => { loadFeedback(); }, [loadFeedback]);
 
-  const handleResolve = async (item) => {
-    if (!confirm('Mark this feedback as resolved? The user will be notified.')) return;
+  const openResolveModal = (item) => {
+    setResolveItem(item);
+    setResolveMessage('');
+  };
+
+  const handleResolve = async () => {
+    if (!resolveMessage.trim()) return alert('Please enter a message for the user.');
     setResolving(true);
-    const d = await apiFetch(`/api/feedback/${item.id}`, session, { method: 'PUT', body: JSON.stringify({ status: 'resolved' }) });
-    if (d.success) { showToast('Feedback marked as resolved'); setSelected(null); loadFeedback(); }
+    const d = await apiFetch(`/api/feedback/${resolveItem.id}`, session, { method: 'PUT', body: JSON.stringify({ status: 'resolved', resolve_message: resolveMessage.trim() }) });
+    if (d.success) { showToast('Feedback resolved & user notified'); setSelected(null); setResolveItem(null); setResolveMessage(''); loadFeedback(); }
     else alert(d.error || 'Failed to resolve');
     setResolving(false);
   };
@@ -1161,7 +1168,7 @@ function FeedbackPage({ session, showToast }) {
                   <td className="px-5 py-3 text-sm text-gray-400">{new Date(item.created_at).toLocaleDateString()}</td>
                   <td className="px-5 py-3 text-right">
                     {item.status === 'pending' && (
-                      <button onClick={(e) => { e.stopPropagation(); handleResolve(item); }} className="text-xs bg-emerald-50 text-emerald-600 px-2.5 py-1 rounded-lg hover:bg-emerald-100 font-medium transition">
+                      <button onClick={(e) => { e.stopPropagation(); openResolveModal(item); }} className="text-xs bg-emerald-50 text-emerald-600 px-2.5 py-1 rounded-lg hover:bg-emerald-100 font-medium transition">
                         Resolve
                       </button>
                     )}
@@ -1192,6 +1199,9 @@ function FeedbackPage({ session, showToast }) {
             {selected.status === 'resolved' && selected.resolved_by && (
               <div><span className="block text-xs font-medium text-gray-400 mb-0.5">Resolved By</span><span className="text-gray-700">{selected.resolved_by}</span></div>
             )}
+            {selected.status === 'resolved' && selected.resolve_message && (
+              <div className="col-span-2"><span className="block text-xs font-medium text-gray-400 mb-0.5">Resolution Message</span><p className="text-gray-700 whitespace-pre-wrap">{selected.resolve_message}</p></div>
+            )}
           </div>
           {selected.image_urls && selected.image_urls.length > 0 && (
             <div className="mt-4">
@@ -1206,10 +1216,40 @@ function FeedbackPage({ session, showToast }) {
             </div>
           )}
           {selected.status === 'pending' && (
-            <button disabled={resolving} onClick={() => handleResolve(selected)} className="mt-4 px-4 py-2 bg-emerald-600 text-white text-xs font-medium rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition">
-              {resolving ? 'Resolving...' : 'Mark as Resolved'}
+            <button disabled={resolving} onClick={() => openResolveModal(selected)} className="mt-4 px-4 py-2 bg-emerald-600 text-white text-xs font-medium rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition">
+              Mark as Resolved
             </button>
           )}
+        </div>
+      )}
+
+      {/* Resolve modal */}
+      {resolveItem && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={() => !resolving && setResolveItem(null)}>
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-semibold text-gray-900">Resolve Feedback</h3>
+              <button onClick={() => !resolving && setResolveItem(null)} className="text-gray-400 hover:text-gray-600"><X size={16} /></button>
+            </div>
+            <p className="text-xs text-gray-500 mb-1">From: <span className="font-medium text-gray-700">{resolveItem.email || 'Unknown'}</span></p>
+            <p className="text-xs text-gray-400 mb-4 truncate">Re: {resolveItem.message ? resolveItem.message.substring(0, 80) : '-'}</p>
+            <label className="block text-xs font-medium text-gray-700 mb-1.5">Message to user (sent as push notification)</label>
+            <textarea
+              value={resolveMessage}
+              onChange={(e) => setResolveMessage(e.target.value)}
+              placeholder="e.g. Thank you for your feedback! We've fixed the issue..."
+              rows={3}
+              maxLength={500}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent resize-none"
+            />
+            <div className="text-right text-[11px] text-gray-300 mt-1">{resolveMessage.length}/500</div>
+            <div className="flex justify-end gap-2 mt-4">
+              <button disabled={resolving} onClick={() => setResolveItem(null)} className="px-4 py-2 text-xs font-medium text-gray-500 bg-gray-100 rounded-lg hover:bg-gray-200 transition">Cancel</button>
+              <button disabled={resolving || !resolveMessage.trim()} onClick={handleResolve} className="px-4 py-2 text-xs font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition">
+                {resolving ? 'Sending...' : 'Resolve & Notify'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
