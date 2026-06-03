@@ -1685,6 +1685,8 @@ function CategoriesPage({ session, showToast }) {
 function HafazanPage({ session, showToast }) {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [surahPage, setSurahPage] = useState(1);
+  const [reviewPage, setReviewPage] = useState(1);
 
   useEffect(() => {
     apiFetch('/api/hafazan/stats', session).then((d) => {
@@ -1750,7 +1752,7 @@ function HafazanPage({ session, showToast }) {
               </tr>
             </thead>
             <tbody>
-              {topSurahs.map((s) => (
+              {paginate(topSurahs, surahPage).map((s) => (
                 <tr key={s.surah_number} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50">
                   <td className="px-5 py-3 text-sm text-gray-700 font-medium">{s.surah_number}. {s.surah_name || `Surah ${s.surah_number}`}</td>
                   <td className="px-5 py-3">
@@ -1760,6 +1762,7 @@ function HafazanPage({ session, showToast }) {
               ))}
             </tbody>
           </table>
+          <Pagination total={topSurahs.length} page={surahPage} onPageChange={setSurahPage} />
         </div>
       )}
 
@@ -1778,7 +1781,7 @@ function HafazanPage({ session, showToast }) {
               </tr>
             </thead>
             <tbody>
-              {recent.map((r) => (
+              {paginate(recent, reviewPage).map((r) => (
                 <tr key={r.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50">
                   <td className="px-5 py-3 text-sm text-gray-700">{r.name || r.email || r.user_id?.slice(0, 8) + '...'}</td>
                   <td className="px-5 py-3">
@@ -1791,6 +1794,7 @@ function HafazanPage({ session, showToast }) {
               ))}
             </tbody>
           </table>
+          <Pagination total={recent.length} page={reviewPage} onPageChange={setReviewPage} />
         </div>
       )}
     </div>
