@@ -7,7 +7,7 @@ import {
   Bell, MessageSquareText, LogOut, ChevronDown, ChevronRight,
   Plus, Trash2, Upload, Search, Check, X, Play,
   CalendarDays, Tag, Edit3, ToggleLeft, ToggleRight, AlertTriangle, Ban, Eye,
-  BookOpen, Filter, ChevronLeft, Construction,
+  BookOpen, Filter, ChevronLeft, Construction, CheckSquare,
 } from 'lucide-react';
 
 const API_URL = 'https://api.hidayahmy.com';
@@ -1792,6 +1792,222 @@ function KhatamPage({ session, showToast }) {
   );
 }
 
+// ─── Prayer Check-in Analytics ───
+function PrayerCheckinPage({ session }) {
+  const [analytics, setAnalytics] = useState(null);
+  const [todayUsers, setTodayUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [period, setPeriod] = useState('daily');
+  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [page, setPage] = useState(1);
+
+  const loadStats = useCallback(() => {
+    setLoading(true);
+    apiFetch(`/api/prayer-checkin/admin-stats?period=${period}&date=${date}`, session)
+      .then((d) => {
+        if (d.success) {
+          setAnalytics(d.analytics);
+          setTodayUsers(d.today_users || []);
+        }
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, [session, period, date]);
+
+  useEffect(() => { loadStats(); }, [loadStats]);
+  useEffect(() => { setPage(1); }, [period, date]);
+
+  const prayers = ['subuh', 'zohor', 'asar', 'maghrib', 'isyak'];
+  const prayerColors = { subuh: 'bg-indigo-100 text-indigo-700', zohor: 'bg-amber-100 text-amber-700', asar: 'bg-orange-100 text-orange-700', maghrib: 'bg-rose-100 text-rose-700', isyak: 'bg-violet-100 text-violet-700' };
+
+  if (loading) return <div className="flex justify-center py-20 text-gray-400">Loading...</div>;
+
+  return (
+    <div className="space-y-6">
+      {/* Period selector & date picker */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex gap-1.5">
+          {[{ value: 'daily', label: 'Daily' }, { value: 'weekly', label: 'Weekly' }, { value: 'monthly', label: 'Monthly' }].map((p) => (
+            <button key={p.value} onClick={() => setPeriod(p.value)}
+              className={`px-3 py-1.5 text-xs font-medium rounded-lg transition ${period === p.value ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
+              {p.label}
+            </button>
+          ))}
+        </div>
+        <input type="date" value={date} onChange={(e) => setDate(e.target.value)}
+          className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-300" />
+      </div>
+
+      {/* Analytics Cards */}
+      {analytics && (
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-white rounded-xl border border-gray-100 p-4 hover:shadow-sm transition">
+              <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wider">Active Users</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">{analytics.total_users?.toLocaleString() || 0}</p>
+            </div>
+            <div className="bg-white rounded-xl border border-gray-100 p-4 hover:shadow-sm transition">
+              <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wider">Total Check-ins</p>
+              <p className="text-2xl font-bold text-emerald-600 mt-1">{analytics.total_checkins?.toLocaleString() || 0}</p>
+            </div>
+            {period === 'daily' && (
+              <>
+                <div className="bg-white rounded-xl border border-gray-100 p-4 hover:shadow-sm transition">
+                  <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wider">Perfect (5/5)</p>
+                  <p className="text-2xl font-bold text-violet-600 mt-1">{analytics.perfect_users || 0}</p>
+                </div>
+                <div className="bg-white rounded-xl border border-gray-100 p-4 hover:shadow-sm transition">
+                  <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wider">Avg Prayers/User</p>
+                  <p className="text-2xl font-bold text-blue-600 mt-1">{analytics.total_users ? (analytics.total_checkins / analytics.total_users).toFixed(1) : '0'}</p>
+                </div>
+              </>
+            )}
+            {period === 'monthly' && (
+              <>
+                <div className="bg-white rounded-xl border border-gray-100 p-4 hover:shadow-sm transition">
+                  <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wider">Perfect Days</p>
+                  <p className="text-2xl font-bold text-violet-600 mt-1">{analytics.total_perfect_days || 0}</p>
+                </div>
+                <div className="bg-white rounded-xl border border-gray-100 p-4 hover:shadow-sm transition">
+                  <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wider">Avg/User</p>
+                  <p className="text-2xl font-bold text-blue-600 mt-1">{analytics.total_users ? (analytics.total_checkins / analytics.total_users).toFixed(1) : '0'}</p>
+                </div>
+              </>
+            )}
+            {period === 'weekly' && (
+              <>
+                <div className="bg-white rounded-xl border border-gray-100 p-4 hover:shadow-sm transition">
+                  <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wider">Week</p>
+                  <p className="text-sm font-semibold text-gray-700 mt-1">{analytics.week_start} ~ {analytics.week_end}</p>
+                </div>
+                <div className="bg-white rounded-xl border border-gray-100 p-4 hover:shadow-sm transition">
+                  <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wider">Avg/Day</p>
+                  <p className="text-2xl font-bold text-blue-600 mt-1">{(analytics.total_checkins / 7).toFixed(0)}</p>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Prayer Breakdown (daily & monthly) */}
+          {analytics.prayer_breakdown && (
+            <div className="bg-white rounded-xl border border-gray-100 p-5">
+              <h3 className="text-sm font-semibold text-gray-900 mb-3">Prayer Breakdown</h3>
+              <div className="grid grid-cols-5 gap-3">
+                {prayers.map((p) => {
+                  const count = analytics.prayer_breakdown[p] || 0;
+                  const max = Math.max(...Object.values(analytics.prayer_breakdown), 1);
+                  return (
+                    <div key={p} className="text-center">
+                      <div className="h-24 flex items-end justify-center mb-2">
+                        <div className="w-8 bg-emerald-200 rounded-t" style={{ height: `${(count / max) * 100}%`, minHeight: '4px' }}></div>
+                      </div>
+                      <p className="text-xs font-medium text-gray-700 capitalize">{p}</p>
+                      <p className="text-[11px] text-gray-400">{count}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Weekly daily summary chart */}
+          {period === 'weekly' && analytics.daily_summary && (
+            <div className="bg-white rounded-xl border border-gray-100 p-5">
+              <h3 className="text-sm font-semibold text-gray-900 mb-3">Daily Breakdown</h3>
+              <table className="w-full">
+                <thead><tr className="border-b border-gray-50">
+                  <th className="text-left px-3 py-2 text-[11px] font-semibold text-gray-400 uppercase">Date</th>
+                  <th className="text-left px-3 py-2 text-[11px] font-semibold text-gray-400 uppercase">Users</th>
+                  <th className="text-left px-3 py-2 text-[11px] font-semibold text-gray-400 uppercase">Check-ins</th>
+                  <th className="text-left px-3 py-2 text-[11px] font-semibold text-gray-400 uppercase">Perfect</th>
+                </tr></thead>
+                <tbody>
+                  {analytics.daily_summary.map((day) => (
+                    <tr key={day.date} className="border-b border-gray-50 last:border-0">
+                      <td className="px-3 py-2 text-sm text-gray-700">{new Date(day.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</td>
+                      <td className="px-3 py-2 text-sm text-gray-500">{day.users}</td>
+                      <td className="px-3 py-2 text-sm text-gray-500">{day.checkins}</td>
+                      <td className="px-3 py-2"><span className="text-xs bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded font-medium">{day.perfect_users}</span></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* Monthly weekly summary */}
+          {period === 'monthly' && analytics.weekly_summary && (
+            <div className="bg-white rounded-xl border border-gray-100 p-5">
+              <h3 className="text-sm font-semibold text-gray-900 mb-3">Weekly Summary</h3>
+              <table className="w-full">
+                <thead><tr className="border-b border-gray-50">
+                  <th className="text-left px-3 py-2 text-[11px] font-semibold text-gray-400 uppercase">Week</th>
+                  <th className="text-left px-3 py-2 text-[11px] font-semibold text-gray-400 uppercase">Users</th>
+                  <th className="text-left px-3 py-2 text-[11px] font-semibold text-gray-400 uppercase">Check-ins</th>
+                </tr></thead>
+                <tbody>
+                  {analytics.weekly_summary.map((w, i) => (
+                    <tr key={i} className="border-b border-gray-50 last:border-0">
+                      <td className="px-3 py-2 text-sm text-gray-700">{w.week_start} ~ {w.week_end}</td>
+                      <td className="px-3 py-2 text-sm text-gray-500">{w.users}</td>
+                      <td className="px-3 py-2 text-sm text-gray-500">{w.checkins}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Today's Users Table */}
+      <div className="bg-white rounded-xl border border-gray-100">
+        <div className="flex items-center justify-between p-5 border-b border-gray-50">
+          <div className="flex items-center gap-3">
+            <h3 className="text-sm font-semibold text-gray-900">Users Checked In Today</h3>
+            <span className="text-xs text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full">{todayUsers.length}</span>
+          </div>
+        </div>
+        {todayUsers.length === 0 ? (
+          <div className="text-gray-400 text-center py-12 text-sm">No check-ins today</div>
+        ) : (
+          <table className="w-full">
+            <thead><tr className="border-b border-gray-50">
+              <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Email</th>
+              <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Prayers</th>
+              <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Count</th>
+              <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Status</th>
+            </tr></thead>
+            <tbody>
+              {paginate(todayUsers, page).map((u) => (
+                <tr key={u.user_id} className="border-b border-gray-50 last:border-0">
+                  <td className="px-5 py-3 text-sm text-gray-700">{u.email}</td>
+                  <td className="px-5 py-3">
+                    <div className="flex gap-1 flex-wrap">
+                      {u.prayers.map((p) => (
+                        <span key={p} className={`text-[10px] px-1.5 py-0.5 rounded font-medium capitalize ${prayerColors[p]}`}>{p}</span>
+                      ))}
+                    </div>
+                  </td>
+                  <td className="px-5 py-3 text-sm text-gray-500">{u.count}/5</td>
+                  <td className="px-5 py-3">
+                    {u.is_perfect ? (
+                      <span className="text-xs bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded font-medium">Perfect</span>
+                    ) : (
+                      <span className="text-xs bg-amber-50 text-amber-600 px-2 py-0.5 rounded font-medium">Partial</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+        <Pagination total={todayUsers.length} page={page} onPageChange={setPage} />
+      </div>
+    </div>
+  );
+}
+
 // ─── Navigation config ───
 const navSections = [
   {
@@ -1814,8 +2030,9 @@ const navSections = [
     ],
   },
   {
-    label: 'Quran',
+    label: 'Ibadah',
     items: [
+      { id: 'prayer-checkin', label: 'Prayer Check-in', icon: CheckSquare },
       { id: 'khatam', label: 'Khatam Progress', icon: BookOpen },
     ],
   },
@@ -1842,6 +2059,7 @@ const pages = {
   backgrounds: BackgroundsPage,
   azan: AzanSoundsPage,
   'iqra-audio': IqraAudioPage,
+  'prayer-checkin': PrayerCheckinPage,
   khatam: KhatamPage,
   events: EventsPage,
   categories: CategoriesPage,
