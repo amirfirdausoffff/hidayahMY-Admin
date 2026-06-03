@@ -7,7 +7,7 @@ import {
   Bell, MessageSquareText, LogOut, ChevronDown, ChevronRight,
   Plus, Trash2, Upload, Search, Check, X, Play,
   CalendarDays, Tag, Edit3, ToggleLeft, ToggleRight, AlertTriangle, Ban, Eye,
-  BookOpen, Filter, ChevronLeft, Construction, CheckSquare,
+  BookOpen, Filter, ChevronLeft, Construction, CheckSquare, GraduationCap,
 } from 'lucide-react';
 
 const API_URL = 'https://api.hidayahmy.com';
@@ -1681,6 +1681,122 @@ function CategoriesPage({ session, showToast }) {
 }
 
 // ─── Khatam Progress (Admin Analytics) ───
+// ─── Hafazan (Quran Memorization) Analytics ───
+function HafazanPage({ session, showToast }) {
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    apiFetch('/api/hafazan/stats', session).then((d) => {
+      if (d.success) setStats(d.stats);
+      else showToast(d.error || 'Failed to load hafazan stats', 'error');
+      setLoading(false);
+    }).catch(() => { setLoading(false); });
+  }, [session]);
+
+  if (loading) return <div className="flex justify-center py-20 text-gray-400">Loading...</div>;
+  if (!stats) return <div className="text-gray-400 text-center py-20 text-sm">No hafazan data available</div>;
+
+  const fmt = (n) => (n || 0).toLocaleString();
+
+  const summaryCards = [
+    { label: 'Total Entries', value: fmt(stats.total_entries), color: 'text-blue-600' },
+    { label: 'Total Users', value: fmt(stats.total_users), color: 'text-indigo-600' },
+    { label: 'Memorizing', value: fmt(stats.entries_by_status?.memorizing), color: 'text-amber-600' },
+    { label: 'Memorized', value: fmt(stats.entries_by_status?.memorized), color: 'text-emerald-600' },
+  ];
+
+  const reviewCards = [
+    { label: 'Total Reviews', value: fmt(stats.total_reviews), color: 'text-blue-600' },
+    { label: 'Avg Rating', value: stats.avg_rating ? `${stats.avg_rating}/5` : '-', color: 'text-violet-600' },
+  ];
+
+  const topSurahs = stats.top_memorized_surahs || [];
+  const recent = stats.recent_activity || [];
+
+  return (
+    <div className="space-y-6">
+      {/* Summary cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {summaryCards.map((st) => (
+          <div key={st.label} className="bg-white rounded-xl border border-gray-100 p-5 hover:shadow-sm transition-shadow">
+            <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">{st.label}</span>
+            <div className={`text-3xl font-bold mt-2 ${st.color}`}>{st.value}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Review stats */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {reviewCards.map((st) => (
+          <div key={st.label} className="bg-white rounded-xl border border-gray-100 p-5 hover:shadow-sm transition-shadow">
+            <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">{st.label}</span>
+            <div className={`text-2xl font-bold mt-2 ${st.color}`}>{st.value}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Top memorized surahs */}
+      {topSurahs.length > 0 && (
+        <div className="bg-white rounded-xl border border-gray-100">
+          <div className="px-5 py-4 border-b border-gray-50">
+            <h3 className="text-sm font-semibold text-gray-900">Top Memorized Surahs</h3>
+          </div>
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-gray-50">
+                <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Surah</th>
+                <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Entries</th>
+              </tr>
+            </thead>
+            <tbody>
+              {topSurahs.map((s) => (
+                <tr key={s.surah_number} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50">
+                  <td className="px-5 py-3 text-sm text-gray-700 font-medium">Surah {s.surah_number}</td>
+                  <td className="px-5 py-3">
+                    <span className="text-xs bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded font-medium">{s.count}</span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Recent reviews */}
+      {recent.length > 0 && (
+        <div className="bg-white rounded-xl border border-gray-100">
+          <div className="px-5 py-4 border-b border-gray-50">
+            <h3 className="text-sm font-semibold text-gray-900">Recent Reviews</h3>
+          </div>
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-gray-50">
+                <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">User ID</th>
+                <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Rating</th>
+                <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              {recent.map((r) => (
+                <tr key={r.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50">
+                  <td className="px-5 py-3 text-sm text-gray-500 font-mono">{r.user_id?.slice(0, 8)}...</td>
+                  <td className="px-5 py-3">
+                    <span className={`text-xs px-2 py-0.5 rounded font-medium ${r.rating >= 4 ? 'bg-emerald-50 text-emerald-600' : r.rating >= 3 ? 'bg-amber-50 text-amber-600' : 'bg-red-50 text-red-600'}`}>
+                      {r.rating}/5
+                    </span>
+                  </td>
+                  <td className="px-5 py-3 text-sm text-gray-500">{r.created_at?.split('T')[0] || '-'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function KhatamPage({ session, showToast }) {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -2034,6 +2150,7 @@ const navSections = [
     items: [
       { id: 'prayer-checkin', label: 'Prayer Check-in', icon: CheckSquare },
       { id: 'khatam', label: 'Khatam Progress', icon: BookOpen },
+      { id: 'hafazan', label: 'Hafazan', icon: GraduationCap },
     ],
   },
   {
@@ -2061,6 +2178,7 @@ const pages = {
   'iqra-audio': IqraAudioPage,
   'prayer-checkin': PrayerCheckinPage,
   khatam: KhatamPage,
+  hafazan: HafazanPage,
   events: EventsPage,
   categories: CategoriesPage,
   notifications: NotificationsPage,
