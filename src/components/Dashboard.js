@@ -1772,7 +1772,7 @@ function HafazanPage({ session, showToast }) {
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-50">
-                <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">User ID</th>
+                <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">User</th>
                 <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Rating</th>
                 <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Date</th>
               </tr>
@@ -1780,7 +1780,7 @@ function HafazanPage({ session, showToast }) {
             <tbody>
               {recent.map((r) => (
                 <tr key={r.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50">
-                  <td className="px-5 py-3 text-sm text-gray-500 font-mono">{r.user_id?.slice(0, 8)}...</td>
+                  <td className="px-5 py-3 text-sm text-gray-700">{r.name || r.email || r.user_id?.slice(0, 8) + '...'}</td>
                   <td className="px-5 py-3">
                     <span className={`text-xs px-2 py-0.5 rounded font-medium ${r.rating >= 4 ? 'bg-emerald-50 text-emerald-600' : r.rating >= 3 ? 'bg-amber-50 text-amber-600' : 'bg-red-50 text-red-600'}`}>
                       {r.rating}/5
