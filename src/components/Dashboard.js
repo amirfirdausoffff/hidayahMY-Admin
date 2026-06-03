@@ -270,17 +270,45 @@ function DashboardPage({ session, showToast }) {
 }
 
 // ─── Customers ───
-function CustomersPage({ session }) {
+function CustomersPage({ session, showToast }) {
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [adminPassword, setAdminPassword] = useState('');
+  const [deleteError, setDeleteError] = useState('');
+  const [deleting, setDeleting] = useState(false);
 
-  useEffect(() => {
+  const loadCustomers = useCallback(() => {
     apiFetch('/api/admin/list-users?role=customer', session)
       .then((d) => { setCustomers(d.users || []); setLoading(false); })
       .catch(() => setLoading(false));
   }, [session]);
+
+  useEffect(() => { loadCustomers(); }, [loadCustomers]);
+
+  const handleDelete = async (e) => {
+    e.preventDefault();
+    if (!adminPassword) { setDeleteError('Enter your admin password'); return; }
+    setDeleteError('');
+    setDeleting(true);
+
+    const d = await apiFetch('/api/admin/delete-customer', session, {
+      method: 'DELETE',
+      body: JSON.stringify({ user_id: deleteTarget.id, admin_password: adminPassword }),
+    });
+
+    if (d.success) {
+      showToast(`Deleted ${deleteTarget.email}`);
+      setDeleteTarget(null);
+      setAdminPassword('');
+      loadCustomers();
+    } else {
+      setDeleteError(d.error || 'Failed to delete');
+    }
+    setDeleting(false);
+  };
 
   if (loading) return <div className="flex justify-center py-20 text-gray-400">Loading...</div>;
 
@@ -291,6 +319,47 @@ function CustomersPage({ session }) {
 
   return (
     <div className="bg-white rounded-xl border border-gray-100">
+      {/* Delete confirmation modal */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm mx-4 p-6">
+            <div className="flex items-center gap-2 mb-1">
+              <AlertTriangle size={18} className="text-red-500" />
+              <h3 className="text-sm font-semibold text-gray-900">Delete Customer</h3>
+            </div>
+            <p className="text-xs text-gray-500 mb-4">
+              This will permanently delete <span className="font-semibold text-gray-700">{deleteTarget.email}</span> and all their data (bookmarks, notes, prayers, khatam, hafazan, events).
+            </p>
+            <form onSubmit={handleDelete}>
+              {deleteError && (
+                <div className="text-red-600 text-xs bg-red-50 border border-red-200 px-3 py-2 rounded-lg mb-3">{deleteError}</div>
+              )}
+              <label className="block text-xs font-medium text-gray-500 mb-1.5">Enter your admin password to confirm</label>
+              <input
+                type="password"
+                value={adminPassword}
+                onChange={(e) => setAdminPassword(e.target.value)}
+                placeholder="Admin password"
+                autoFocus
+                className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg outline-none focus:border-red-400 mb-4"
+              />
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => { setDeleteTarget(null); setAdminPassword(''); setDeleteError(''); }}
+                  className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition"
+                >Cancel</button>
+                <button
+                  type="submit"
+                  disabled={deleting}
+                  className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50 transition"
+                >{deleting ? 'Deleting...' : 'Delete'}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center justify-between p-5 border-b border-gray-50">
         <div className="flex items-center gap-3">
           <h2 className="text-sm font-semibold text-gray-900">All Customers</h2>
@@ -309,6 +378,7 @@ function CustomersPage({ session }) {
               <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Email</th>
               <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Provider</th>
               <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Joined</th>
+              <th className="px-5 py-3"></th>
             </tr></thead>
             <tbody>
               {paged.map((u) => (
@@ -317,6 +387,13 @@ function CustomersPage({ session }) {
                   <td className="px-5 py-3 text-sm text-gray-500">{u.email}</td>
                   <td className="px-5 py-3"><span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded">{u.provider || 'email'}</span></td>
                   <td className="px-5 py-3 text-sm text-gray-400">{new Date(u.created_at).toLocaleDateString()}</td>
+                  <td className="px-5 py-3 text-right">
+                    <button
+                      onClick={() => { setDeleteTarget(u); setAdminPassword(''); setDeleteError(''); }}
+                      className="text-gray-300 hover:text-red-500 transition"
+                      title="Delete customer"
+                    ><Trash2 size={14} /></button>
+                  </td>
                 </tr>
               ))}
             </tbody>
