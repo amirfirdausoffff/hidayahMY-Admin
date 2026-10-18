@@ -377,6 +377,7 @@ function CustomersPage({ session, showToast }) {
               <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Name</th>
               <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Email</th>
               <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Provider</th>
+              <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Device</th>
               <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Joined</th>
               <th className="px-5 py-3"></th>
             </tr></thead>
@@ -386,6 +387,17 @@ function CustomersPage({ session, showToast }) {
                   <td className="px-5 py-3 text-sm text-gray-900 font-medium">{u.name || '-'}</td>
                   <td className="px-5 py-3 text-sm text-gray-500">{u.email}</td>
                   <td className="px-5 py-3"><span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded">{u.provider || 'email'}</span></td>
+                  <td className="px-5 py-3">
+                    {u.platforms?.length ? (
+                      <div className="flex flex-wrap gap-1">
+                        {u.platforms.map((platform) => (
+                          <span key={platform} className={`text-xs px-2 py-0.5 rounded ${platform === 'ios' ? 'bg-sky-50 text-sky-700' : 'bg-emerald-50 text-emerald-700'}`}>
+                            {platform === 'ios' ? 'iOS' : 'Android'}
+                          </span>
+                        ))}
+                      </div>
+                    ) : <span className="text-xs text-gray-400">Not detected</span>}
+                  </td>
                   <td className="px-5 py-3 text-sm text-gray-400">{new Date(u.created_at).toLocaleDateString()}</td>
                   <td className="px-5 py-3 text-right">
                     <button
