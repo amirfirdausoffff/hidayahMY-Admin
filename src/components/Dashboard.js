@@ -79,6 +79,8 @@ function Pagination({ total, page, onPageChange }) {
 function DashboardPage({ session, showToast }) {
   const [firebaseStats, setFirebaseStats] = useState(null);
   const [apiStats, setApiStats] = useState(null);
+  const [registrationPeriod, setRegistrationPeriod] = useState('week');
+  const [registrationStats, setRegistrationStats] = useState(null);
   const [pendingFeedback, setPendingFeedback] = useState(0);
   const [loading, setLoading] = useState(true);
   const [maintenance, setMaintenance] = useState({ enabled: false, message_en: '', message_bm: '' });
@@ -96,6 +98,7 @@ function DashboardPage({ session, showToast }) {
   }, []);
 
   useEffect(() => { apiFetch('/api/admin/stats', session).then(setApiStats).catch(() => {}); }, [session]);
+  useEffect(() => { apiFetch(`/api/admin/stats?period=${registrationPeriod}`, session).then(setRegistrationStats).catch(() => {}); }, [session, registrationPeriod]);
   useEffect(() => { apiFetch('/api/feedback', session).then((d) => { setPendingFeedback((d.feedback || []).filter((f) => f.status === 'pending').length); }).catch(() => {}); }, [session]);
 
   // Load maintenance status
@@ -158,6 +161,9 @@ function DashboardPage({ session, showToast }) {
     { label: 'App Downloads', value: fmt(firebaseStats?.downloads), color: 'text-emerald-600', bg: 'bg-emerald-50', icon: LayoutDashboard },
     { label: 'Pending Feedback', value: fmt(pendingFeedback), color: 'text-amber-600', bg: 'bg-amber-50', icon: MessageSquareText },
   ];
+  const registrationSeries = registrationStats?.registrationSeries || [];
+  const registrationMax = Math.max(...registrationSeries.map((item) => item.count), 1);
+  const registrationTotal = registrationSeries.reduce((total, item) => total + item.count, 0);
 
   return (
     <div className="space-y-6">
@@ -172,6 +178,45 @@ function DashboardPage({ session, showToast }) {
           </div>
         ))}
       </div>
+
+      <section className="bg-white rounded-xl border border-gray-100 p-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-6">
+          <div>
+            <h3 className="text-sm font-semibold text-gray-900">New customer registrations</h3>
+            <p className="text-xs text-gray-400 mt-1">{registrationTotal.toLocaleString()} new customer{registrationTotal === 1 ? '' : 's'} in the selected period</p>
+          </div>
+          <div className="flex rounded-lg bg-gray-100 p-1 self-start">
+            {['day', 'week', 'month'].map((period) => (
+              <button
+                key={period}
+                onClick={() => setRegistrationPeriod(period)}
+                className={`px-3 py-1.5 rounded-md text-xs font-medium capitalize transition ${registrationPeriod === period ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+              >{period}</button>
+            ))}
+          </div>
+        </div>
+
+        {!registrationStats ? <div className="h-52 flex items-center justify-center text-sm text-gray-400">Loading registration data...</div> : (
+          <div className="overflow-x-auto">
+            <div className="min-w-[620px]">
+              <div className="h-52 flex items-end gap-2 border-b border-gray-100 px-2">
+                {registrationSeries.map((item) => {
+                  const height = item.count ? Math.max((item.count / registrationMax) * 100, 5) : 0;
+                  return (
+                    <div key={item.key} className="h-full flex-1 min-w-0 flex flex-col justify-end group relative">
+                      <div className="absolute -top-7 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition bg-gray-900 text-white text-[11px] font-medium rounded px-2 py-1 whitespace-nowrap pointer-events-none z-10">{item.count} registration{item.count === 1 ? '' : 's'}</div>
+                      <div className="w-full rounded-t bg-blue-500 hover:bg-blue-600 transition-colors" style={{ height: `${height}%` }} aria-label={`${item.label}: ${item.count} registrations`} />
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="flex gap-2 px-2 pt-2">
+                {registrationSeries.map((item) => <div key={item.key} className="flex-1 min-w-0 text-center text-[10px] text-gray-400 truncate" title={item.label}>{item.label}</div>)}
+              </div>
+            </div>
+          </div>
+        )}
+      </section>
 
       {/* Maintenance Mode Card */}
       <div className={`rounded-xl border p-5 transition-all ${maintenance.enabled ? 'bg-red-50 border-red-200' : 'bg-white border-gray-100'}`}>
