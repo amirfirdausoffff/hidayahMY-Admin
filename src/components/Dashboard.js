@@ -205,6 +205,7 @@ function DashboardPage({ session, showToast }) {
                   return (
                     <div key={item.key} className="h-full flex-1 min-w-0 flex flex-col justify-end group relative">
                       <div className="absolute -top-7 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition bg-gray-900 text-white text-[11px] font-medium rounded px-2 py-1 whitespace-nowrap pointer-events-none z-10">{item.count} registration{item.count === 1 ? '' : 's'}</div>
+                      <span className="absolute left-1/2 -translate-x-1/2 text-xs font-semibold text-gray-600 tabular-nums" style={{ bottom: `calc(${height}% + 4px)` }}>{item.count}</span>
                       <div className="w-full rounded-t bg-blue-500 hover:bg-blue-600 transition-colors" style={{ height: `${height}%` }} aria-label={`${item.label}: ${item.count} registrations`} />
                     </div>
                   );
