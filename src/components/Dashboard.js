@@ -1090,6 +1090,7 @@ function NotificationsPage({ session, showToast }) {
   const [body, setBody] = useState('');
   const [topic, setTopic] = useState('general');
   const [platform, setPlatform] = useState('all');
+  const [osTopics, setOsTopics] = useState({ android: null, ios: null });
   const [sendMode, setSendMode] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
@@ -1116,6 +1117,29 @@ function NotificationsPage({ session, showToast }) {
 
   useEffect(() => { loadHistory(); }, [loadHistory]);
 
+  useEffect(() => {
+    let active = true;
+    const prepare = async (os) => {
+      try {
+        let status = await apiFetch(`/api/admin/os-topics?platform=${os}`, session);
+        if (!status.success) throw new Error(status.error || 'Unable to check topic');
+        if (active) setOsTopics((previous) => ({ ...previous, [os]: status }));
+        while (active && !status.ready) {
+          status = await apiFetch('/api/admin/os-topics', session, {
+            method: 'POST', body: JSON.stringify({ platform: os }),
+          });
+          if (!status.success) throw new Error(status.error || 'Unable to prepare topic');
+          if (active) setOsTopics((previous) => ({ ...previous, [os]: status }));
+        }
+      } catch (err) {
+        if (active) setOsTopics((previous) => ({ ...previous, [os]: { ready: false, error: err.message } }));
+      }
+    };
+    prepare('android');
+    prepare('ios');
+    return () => { active = false; };
+  }, [session]);
+
   const handleSearch = async (query) => {
     setSearchQuery(query);
     if (query.trim().length < 2) { setSearchResults([]); return; }
@@ -1130,20 +1154,24 @@ function NotificationsPage({ session, showToast }) {
     e.preventDefault();
     if (!title.trim() || !body.trim()) return;
     if (sendMode === 'user' && !selectedUser) { setError('Select a user first'); return; }
+    const useOsTopic = sendMode === 'all' && platform !== 'all' && osTopics[platform]?.ready;
     const target = sendMode === 'user'
       ? `"${selectedUser.name || selectedUser.email}"`
-      : `${platform === 'all' ? 'all users' : `${platform === 'ios' ? 'iOS' : 'Android'} users with registered devices`} (${topics.find((t) => t.value === topic)?.label})`;
+      : `${platform === 'all' ? 'all users' : `${platform === 'ios' ? 'iOS' : 'Android'} ${useOsTopic ? 'topic subscribers' : 'users with registered devices'}`} (${topics.find((t) => t.value === topic)?.label})`;
     if (!confirm(`Send to ${target}?\n\n${title}\n${body}`)) return;
 
     setSending(true); setError('');
     const payload = { title: title.trim(), body: body.trim(), topic };
     if (sendMode === 'user') payload.user_id = selectedUser.id;
-    else payload.platform = platform;
+    else {
+      payload.platform = platform;
+      if (useOsTopic) payload.delivery = 'os_topic';
+    }
 
     try {
       const d = await apiFetch('/api/admin/send-notification', session, { method: 'POST', body: JSON.stringify(payload) });
       if (d.success) {
-        showToast(sendMode === 'user' ? `Sent to ${selectedUser.name || selectedUser.email}` : `Sent to ${platform === 'all' ? 'all users' : platform === 'ios' ? 'iOS users' : 'Android users'}${d.sent != null ? ` (${d.sent} devices)` : ''}${d.warning ? ` — ${d.warning}` : ''}`);
+        showToast(sendMode === 'user' ? `Sent to ${selectedUser.name || selectedUser.email}` : `Sent to ${platform === 'all' ? 'all users' : platform === 'ios' ? 'iOS users' : 'Android users'}${d.sent != null ? ` (${d.sent} devices)` : useOsTopic ? ' (OS topic)' : ''}${d.warning ? ` — ${d.warning}` : ''}`);
         setTitle(''); setBody(''); setSelectedUser(null); setSearchQuery(''); setSearchResults([]); loadHistory();
       } else setError(d.error || 'Failed');
     } catch {
@@ -1180,7 +1208,13 @@ function NotificationsPage({ session, showToast }) {
                   <option value="android">Android only</option>
                   <option value="ios">iOS only</option>
                 </select>
-                {platform !== 'all' && <p className="text-[11px] text-gray-400 mt-1">Only signed-in devices registered as {platform === 'ios' ? 'iOS' : 'Android'} will receive this push.</p>}
+                {platform !== 'all' && <p className="text-[11px] text-gray-400 mt-1">
+                  {osTopics[platform]?.ready
+                    ? `${platform === 'ios' ? 'iOS' : 'Android'} topic ready — Firebase handles delivery to subscribed devices.`
+                    : osTopics[platform]?.error
+                      ? `OS topic unavailable; safe token delivery remains active. ${osTopics[platform].error}`
+                      : `Preparing OS topic${osTopics[platform]?.processed ? ` (${osTopics[platform].processed} devices checked)` : ''}. Existing token delivery remains active until ready.`}
+                </p>}
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">Topic</label>
