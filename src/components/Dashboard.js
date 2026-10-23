@@ -1158,9 +1158,18 @@ function NotificationsPage({ session, showToast }) {
   return (
     <div className="space-y-4">
       {/* Send form */}
-      <div className="bg-white rounded-xl border border-gray-100 p-5">
-        <h2 className="text-sm font-semibold text-gray-900 mb-4">Send Notification</h2>
-        <form onSubmit={handleSend} className="max-w-lg space-y-4">
+      <div className="bg-white rounded-xl border border-gray-100 p-5 sm:p-6">
+        <div className="mb-6">
+          <h2 className="text-base font-semibold text-gray-900">Send Notification</h2>
+          <p className="mt-1 text-xs text-gray-400">Choose who receives it, then write your message.</p>
+        </div>
+        <form onSubmit={handleSend} className="max-w-6xl">
+          <div className="grid gap-6 lg:grid-cols-[minmax(280px,0.8fr)_minmax(0,1.2fr)]">
+            <div className="space-y-5 rounded-xl border border-gray-100 bg-gray-50/60 p-4 sm:p-5">
+              <div className="flex items-center gap-2 border-b border-gray-200/70 pb-3">
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-gray-900 text-[11px] font-semibold text-white">1</span>
+                <h3 className="text-sm font-semibold text-gray-900">Audience</h3>
+              </div>
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">Send To</label>
             <div className="flex gap-1.5">
@@ -1175,14 +1184,14 @@ function NotificationsPage({ session, showToast }) {
 
           {sendMode === 'all' && (
             <>
-              <div>
+              <div className="space-y-1">
                 <label className="block text-xs font-medium text-gray-500 mb-1">Platform</label>
                 <select className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-gray-400 cursor-pointer" value={platform} onChange={(e) => setPlatform(e.target.value)}>
                   <option value="all">All devices (iOS + Android)</option>
                   <option value="android">Android only</option>
                   <option value="ios">iOS only</option>
                 </select>
-                {platform !== 'all' && <p className="text-[11px] text-gray-400 mt-1">
+                {platform !== 'all' && <p className="text-xs leading-5 text-gray-500">
                   Sends to the {platform === 'ios' ? 'iOS' : 'Android'} Firebase topic. Only devices running an app version that subscribes to this topic will receive it.
                 </p>}
               </div>
@@ -1228,22 +1237,34 @@ function NotificationsPage({ session, showToast }) {
             </div>
           )}
 
+            </div>
+            <div className="space-y-5 p-0 sm:py-1">
+              <div className="flex items-center gap-2 border-b border-gray-100 pb-3">
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-gray-900 text-[11px] font-semibold text-white">2</span>
+                <h3 className="text-sm font-semibold text-gray-900">Message</h3>
+              </div>
+
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">Title</label>
-            <input className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-gray-400" placeholder="Notification title" value={title} onChange={(e) => setTitle(e.target.value)} required maxLength={100} />
+            <input className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg outline-none focus:border-gray-400" placeholder="Notification title" value={title} onChange={(e) => setTitle(e.target.value)} required maxLength={100} />
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">Message</label>
-            <textarea className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-gray-400 min-h-[80px] resize-y font-[inherit]" placeholder="Message body" value={body} onChange={(e) => setBody(e.target.value)} required maxLength={500} />
+            <textarea className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg outline-none focus:border-gray-400 min-h-[150px] resize-y font-[inherit]" placeholder="Message body" value={body} onChange={(e) => setBody(e.target.value)} required maxLength={500} />
           </div>
-          <div className="flex items-center gap-3">
-            <button type="submit" disabled={sending} className="px-4 py-2 bg-gray-900 text-white text-xs font-medium rounded-lg hover:bg-gray-800 disabled:opacity-50">
-              {sending ? 'Sending...' : 'Send Notification'}
-            </button>
-            <span className="text-[11px] text-gray-300">{title.length}/100 | {body.length}/500</span>
+              <div className="flex justify-between gap-3 text-[11px] text-gray-400">
+                <span>Title: {title.length}/100</span>
+                <span>Message: {body.length}/500</span>
+              </div>
+            </div>
           </div>
 
-          {error && <div className="text-red-600 text-xs bg-red-50 px-3 py-2 rounded-lg">{error}</div>}
+          {error && <div className="mt-5 text-red-600 text-xs bg-red-50 px-3 py-2 rounded-lg">{error}</div>}
+          <div className="mt-6 flex justify-end border-t border-gray-100 pt-5">
+            <button type="submit" disabled={sending} className="w-full sm:w-auto px-5 py-2.5 bg-gray-900 text-white text-xs font-medium rounded-lg hover:bg-gray-800 disabled:opacity-50">
+              {sending ? 'Sending...' : 'Send Notification'}
+            </button>
+          </div>
         </form>
       </div>
 
@@ -1255,7 +1276,7 @@ function NotificationsPage({ session, showToast }) {
         </div>
         {loadingHistory ? <div className="text-gray-400 text-center py-12 text-sm">Loading...</div> :
          history.length === 0 ? <div className="text-gray-400 text-center py-12 text-sm">No notifications sent yet</div> : (
-          <table className="w-full">
+          <div className="overflow-x-auto"><table className="w-full min-w-[760px]">
             <thead><tr className="border-b border-gray-50">
               <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Title</th>
               <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Message</th>
@@ -1274,7 +1295,7 @@ function NotificationsPage({ session, showToast }) {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         )}
         <Pagination total={history.length} page={historyPage} onPageChange={setHistoryPage} />
       </div>
