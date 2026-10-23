@@ -77,6 +77,10 @@ function Pagination({ total, page, onPageChange }) {
 
 // ─── Dashboard ───
 function DashboardPage({ session, showToast }) {
+  const [admobMonth, setAdmobMonth] = useState(new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kuala_Lumpur', year: 'numeric', month: '2-digit' }).slice(0, 7));
+  const [admobOverall, setAdmobOverall] = useState(false);
+  const [admobData, setAdmobData] = useState(null);
+  const [admobError, setAdmobError] = useState('');
   const [firebaseStats, setFirebaseStats] = useState(null);
   const [apiStats, setApiStats] = useState(null);
   const [registrationPeriod, setRegistrationPeriod] = useState('week');
@@ -98,6 +102,21 @@ function DashboardPage({ session, showToast }) {
   }, []);
 
   useEffect(() => { apiFetch('/api/admin/stats', session).then(setApiStats).catch(() => {}); }, [session]);
+  useEffect(() => {
+    let active = true;
+    setAdmobData(null);
+    setAdmobError('');
+    const end = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kuala_Lumpur', year: 'numeric', month: '2-digit', day: '2-digit' });
+    const start = admobOverall ? '2026-01-01' : `${admobMonth}-01`;
+    const monthEnd = new Date(`${admobMonth}-01T00:00:00Z`);
+    monthEnd.setUTCMonth(monthEnd.getUTCMonth() + 1);
+    monthEnd.setUTCDate(0);
+    const selectedEnd = admobOverall ? end : [end, monthEnd.toISOString().slice(0, 10)].sort()[0];
+    apiFetch(`/api/admin/admob-revenue?start=${start}&end=${selectedEnd}`, session)
+      .then((result) => { if (active) result.error ? setAdmobError(result.error) : setAdmobData(result); })
+      .catch(() => { if (active) setAdmobError('Unable to load AdMob revenue'); });
+    return () => { active = false; };
+  }, [session, admobMonth, admobOverall]);
   useEffect(() => { apiFetch(`/api/admin/stats?period=${registrationPeriod}`, session).then(setRegistrationStats).catch(() => {}); }, [session, registrationPeriod]);
   useEffect(() => { apiFetch('/api/feedback', session).then((d) => { setPendingFeedback((d.feedback || []).filter((f) => f.status === 'pending').length); }).catch(() => {}); }, [session]);
 
@@ -178,6 +197,21 @@ function DashboardPage({ session, showToast }) {
           </div>
         ))}
       </div>
+
+      <section className="bg-white rounded-xl border border-gray-100 p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
+          <div><h3 className="text-sm font-semibold text-gray-900">AdMob estimated income</h3><p className="text-xs text-gray-400 mt-1">Network earnings by platform</p></div>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setAdmobOverall(!admobOverall)} className={`px-3 py-2 rounded-lg text-xs font-medium ${admobOverall ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600'}`}>Overall</button>
+            <input aria-label="Income month" type="month" value={admobMonth} max={new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kuala_Lumpur', year: 'numeric', month: '2-digit' }).slice(0, 7)} onChange={(event) => { setAdmobMonth(event.target.value); setAdmobOverall(false); }} className="border border-gray-200 rounded-lg px-3 py-2 text-xs" />
+          </div>
+        </div>
+        {admobError ? <p className="text-sm text-amber-700">{admobError}</p> : !admobData ? <p className="text-sm text-gray-400">Loading income...</p> : (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {[["Total", admobData.totalMicros], ["Android", admobData.platformMicros.ANDROID], ["iOS", admobData.platformMicros.IOS]].map(([label, micros]) => <div key={label} className="rounded-lg bg-gray-50 p-4"><div className="text-xs text-gray-500">{label}</div><div className="text-2xl font-bold text-gray-900 mt-2">{new Intl.NumberFormat('en-US', { style: 'currency', currency: admobData.currency }).format(micros / 1000000)}</div></div>)}
+          </div>
+        )}
+      </section>
 
       <section className="bg-white rounded-xl border border-gray-100 p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-6">
