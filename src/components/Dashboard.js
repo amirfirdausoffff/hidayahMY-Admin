@@ -201,7 +201,8 @@ function DashboardPage({ session, showToast }) {
             <div className="min-w-[620px]">
               <div className="h-52 flex items-end gap-2 border-b border-gray-100 px-2">
                 {registrationSeries.map((item) => {
-                  const height = item.count ? Math.max((item.count / registrationMax) * 100, 5) : 0;
+                  // Leave headroom for the value label, including on the tallest bar.
+                  const height = item.count ? Math.max((item.count / registrationMax) * 86, 5) : 0;
                   return (
                     <div key={item.key} className="h-full flex-1 min-w-0 flex flex-col justify-end group relative">
                       <div className="absolute -top-7 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition bg-gray-900 text-white text-[11px] font-medium rounded px-2 py-1 whitespace-nowrap pointer-events-none z-10">{item.count} registration{item.count === 1 ? '' : 's'}</div>
