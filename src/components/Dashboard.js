@@ -1089,6 +1089,7 @@ function NotificationsPage({ session, showToast }) {
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [topic, setTopic] = useState('general');
+  const [platform, setPlatform] = useState('all');
   const [sendMode, setSendMode] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
@@ -1129,19 +1130,27 @@ function NotificationsPage({ session, showToast }) {
     e.preventDefault();
     if (!title.trim() || !body.trim()) return;
     if (sendMode === 'user' && !selectedUser) { setError('Select a user first'); return; }
-    const target = sendMode === 'user' ? `"${selectedUser.name || selectedUser.email}"` : `all users (${topics.find((t) => t.value === topic)?.label})`;
+    const target = sendMode === 'user'
+      ? `"${selectedUser.name || selectedUser.email}"`
+      : `${platform === 'all' ? 'all users' : `${platform === 'ios' ? 'iOS' : 'Android'} users with registered devices`} (${topics.find((t) => t.value === topic)?.label})`;
     if (!confirm(`Send to ${target}?\n\n${title}\n${body}`)) return;
 
     setSending(true); setError('');
     const payload = { title: title.trim(), body: body.trim(), topic };
     if (sendMode === 'user') payload.user_id = selectedUser.id;
+    else payload.platform = platform;
 
-    const d = await apiFetch('/api/admin/send-notification', session, { method: 'POST', body: JSON.stringify(payload) });
-    if (d.success) {
-      showToast(sendMode === 'user' ? `Sent to ${selectedUser.name || selectedUser.email}` : `Sent to all users`);
-      setTitle(''); setBody(''); setSelectedUser(null); setSearchQuery(''); setSearchResults([]); loadHistory();
-    } else setError(d.error || 'Failed');
-    setSending(false);
+    try {
+      const d = await apiFetch('/api/admin/send-notification', session, { method: 'POST', body: JSON.stringify(payload) });
+      if (d.success) {
+        showToast(sendMode === 'user' ? `Sent to ${selectedUser.name || selectedUser.email}` : `Sent to ${platform === 'all' ? 'all users' : platform === 'ios' ? 'iOS users' : 'Android users'}${d.sent != null ? ` (${d.sent} devices)` : ''}${d.warning ? ` — ${d.warning}` : ''}`);
+        setTitle(''); setBody(''); setSelectedUser(null); setSearchQuery(''); setSearchResults([]); loadHistory();
+      } else setError(d.error || 'Failed');
+    } catch {
+      setError('Unable to send notification. Check your connection and try again.');
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -1163,12 +1172,23 @@ function NotificationsPage({ session, showToast }) {
           </div>
 
           {sendMode === 'all' && (
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Topic</label>
-              <select className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-gray-400 cursor-pointer" value={topic} onChange={(e) => setTopic(e.target.value)}>
-                {topics.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-              </select>
-            </div>
+            <>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Platform</label>
+                <select className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-gray-400 cursor-pointer" value={platform} onChange={(e) => setPlatform(e.target.value)}>
+                  <option value="all">All devices (iOS + Android)</option>
+                  <option value="android">Android only</option>
+                  <option value="ios">iOS only</option>
+                </select>
+                {platform !== 'all' && <p className="text-[11px] text-gray-400 mt-1">Only signed-in devices registered as {platform === 'ios' ? 'iOS' : 'Android'} will receive this push.</p>}
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Topic</label>
+                <select className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-gray-400 cursor-pointer" value={topic} onChange={(e) => setTopic(e.target.value)}>
+                  {topics.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                </select>
+              </div>
+            </>
           )}
 
           {sendMode === 'user' && (
@@ -1236,6 +1256,7 @@ function NotificationsPage({ session, showToast }) {
               <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Title</th>
               <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Message</th>
               <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Topic</th>
+              <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Platform</th>
               <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Date</th>
             </tr></thead>
             <tbody>
@@ -1244,6 +1265,7 @@ function NotificationsPage({ session, showToast }) {
                   <td className="px-5 py-3 text-sm text-gray-900 font-medium max-w-[180px] truncate">{n.title}</td>
                   <td className="px-5 py-3 text-sm text-gray-500 max-w-[260px] truncate">{n.body}</td>
                   <td className="px-5 py-3"><span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded">{n.topic || 'general'}</span></td>
+                  <td className="px-5 py-3"><span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded">{n.data?.target_platform === 'ios' ? 'iOS' : n.data?.target_platform === 'android' ? 'Android' : 'All'}</span></td>
                   <td className="px-5 py-3 text-sm text-gray-400">{new Date(n.created_at).toLocaleString()}</td>
                 </tr>
               ))}
