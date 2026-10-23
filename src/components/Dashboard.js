@@ -2054,7 +2054,7 @@ function PrayerCheckinPage({ session }) {
   const [todayUsers, setTodayUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState('daily');
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(() => new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString().split('T')[0]);
   const [page, setPage] = useState(1);
 
   const loadStats = useCallback(() => {
@@ -2220,12 +2220,12 @@ function PrayerCheckinPage({ session }) {
       <div className="bg-white rounded-xl border border-gray-100">
         <div className="flex items-center justify-between p-5 border-b border-gray-50">
           <div className="flex items-center gap-3">
-            <h3 className="text-sm font-semibold text-gray-900">Users Checked In Today</h3>
+            <h3 className="text-sm font-semibold text-gray-900">Users Checked In — {date}</h3>
             <span className="text-xs text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full">{todayUsers.length}</span>
           </div>
         </div>
         {todayUsers.length === 0 ? (
-          <div className="text-gray-400 text-center py-12 text-sm">No check-ins today</div>
+          <div className="text-gray-400 text-center py-12 text-sm">No check-ins on {date}</div>
         ) : (
           <table className="w-full">
             <thead><tr className="border-b border-gray-50">
