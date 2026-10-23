@@ -1186,20 +1186,26 @@ function NotificationsPage({ session, showToast }) {
             <>
               <div className="space-y-1">
                 <label className="block text-xs font-medium text-gray-500 mb-1">Platform</label>
-                <select className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-gray-400 cursor-pointer" value={platform} onChange={(e) => setPlatform(e.target.value)}>
+                <div className="relative">
+                <select className="w-full appearance-none pl-3 pr-11 py-2.5 text-sm border border-gray-200 rounded-lg bg-white outline-none focus:border-gray-400 cursor-pointer" value={platform} onChange={(e) => setPlatform(e.target.value)}>
                   <option value="all">All devices (iOS + Android)</option>
                   <option value="android">Android only</option>
                   <option value="ios">iOS only</option>
                 </select>
+                <ChevronDown size={16} aria-hidden="true" className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-gray-500" />
+                </div>
                 {platform !== 'all' && <p className="text-xs leading-5 text-gray-500">
                   Sends to the {platform === 'ios' ? 'iOS' : 'Android'} Firebase topic. Only devices running an app version that subscribes to this topic will receive it.
                 </p>}
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">Topic</label>
-                <select className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-gray-400 cursor-pointer" value={topic} onChange={(e) => setTopic(e.target.value)}>
+                <div className="relative">
+                <select className="w-full appearance-none pl-3 pr-11 py-2.5 text-sm border border-gray-200 rounded-lg bg-white outline-none focus:border-gray-400 cursor-pointer" value={topic} onChange={(e) => setTopic(e.target.value)}>
                   {topics.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
                 </select>
+                <ChevronDown size={16} aria-hidden="true" className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-gray-500" />
+                </div>
               </div>
             </>
           )}
@@ -1238,8 +1244,8 @@ function NotificationsPage({ session, showToast }) {
           )}
 
             </div>
-            <div className="space-y-5 p-0 sm:py-1">
-              <div className="flex items-center gap-2 border-b border-gray-100 pb-3">
+            <div className="space-y-5 rounded-xl border border-gray-100 bg-gray-50/60 p-4 sm:p-5">
+              <div className="flex items-center gap-2 border-b border-gray-200/70 pb-3">
                 <span className="flex h-6 w-6 items-center justify-center rounded-full bg-gray-900 text-[11px] font-semibold text-white">2</span>
                 <h3 className="text-sm font-semibold text-gray-900">Message</h3>
               </div>
