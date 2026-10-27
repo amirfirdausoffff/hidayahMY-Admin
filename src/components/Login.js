@@ -22,7 +22,7 @@ export default function Login({ onLogin }) {
       if (authError) {
         setError(authError.message);
       } else if (data.session) {
-        const role = data.user?.user_metadata?.role;
+        const role = data.user?.app_metadata?.role;
         if (role !== 'admin') {
           await supabase.auth.signOut();
           setError('Access denied. Admin accounts only.');

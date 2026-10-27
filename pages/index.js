@@ -9,13 +9,14 @@ export default function Home() {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
+      setSession(session?.user?.app_metadata?.role === 'admin' ? session : null);
       setLoading(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, nextSession) => {
       setSession((currentSession) => {
         if (event === 'SIGNED_OUT') return null;
+        if (nextSession?.user?.app_metadata?.role !== 'admin') return null;
 
         // Supabase emits TOKEN_REFRESHED (and sometimes SIGNED_IN) again when
         // a background tab becomes active. The signed-in user has not changed,
