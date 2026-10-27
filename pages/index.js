@@ -13,8 +13,23 @@ export default function Home() {
       setLoading(false);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      setSession((currentSession) => {
+        if (event === 'SIGNED_OUT') return null;
+
+        // Supabase emits TOKEN_REFRESHED (and sometimes SIGNED_IN) again when
+        // a background tab becomes active. The signed-in user has not changed,
+        // so preserve the existing object identity to avoid remounting/reloading
+        // every admin screen. API requests retrieve the latest token directly.
+        if (
+          currentSession?.user?.id &&
+          currentSession.user.id === nextSession?.user?.id
+        ) {
+          return currentSession;
+        }
+
+        return nextSession;
+      });
     });
 
     return () => subscription.unsubscribe();
