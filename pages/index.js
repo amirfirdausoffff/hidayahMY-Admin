@@ -2,10 +2,12 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../src/lib/supabase';
 import Login from '../src/components/Login';
 import Dashboard from '../src/components/Dashboard';
+import MfaGate from '../src/components/MfaGate';
 
 export default function Home() {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [mfaVerified, setMfaVerified] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -15,8 +17,14 @@ export default function Home() {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, nextSession) => {
       setSession((currentSession) => {
-        if (event === 'SIGNED_OUT') return null;
-        if (nextSession?.user?.app_metadata?.role !== 'admin') return null;
+        if (event === 'SIGNED_OUT') {
+          setMfaVerified(false);
+          return null;
+        }
+        if (nextSession?.user?.app_metadata?.role !== 'admin') {
+          setMfaVerified(false);
+          return null;
+        }
 
         // Supabase emits TOKEN_REFRESHED (and sometimes SIGNED_IN) again when
         // a background tab becomes active. The signed-in user has not changed,
@@ -29,6 +37,7 @@ export default function Home() {
           return currentSession;
         }
 
+        setMfaVerified(false);
         return nextSession;
       });
     });
@@ -37,11 +46,13 @@ export default function Home() {
   }, []);
 
   const handleLogin = (session) => {
+    setMfaVerified(false);
     setSession(session);
   };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
+    setMfaVerified(false);
     setSession(null);
   };
 
@@ -55,6 +66,10 @@ export default function Home() {
 
   if (!session) {
     return <Login onLogin={handleLogin} />;
+  }
+
+  if (!mfaVerified) {
+    return <MfaGate onVerified={() => setMfaVerified(true)} onLogout={handleLogout} />;
   }
 
   return <Dashboard onLogout={handleLogout} session={session} />;
