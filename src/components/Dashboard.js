@@ -9,6 +9,7 @@ import {
   CalendarDays, Tag, Edit3, ToggleLeft, ToggleRight, AlertTriangle, Ban, Eye,
   BookOpen, Filter, ChevronLeft, Construction, CheckSquare, GraduationCap,
   MoreVertical, ArrowLeft, Mail, Cake, Smartphone, Clock3, UserRound, KeyRound,
+  Globe2,
 } from 'lucide-react';
 
 const API_URL = 'https://api.hidayahmy.com';
@@ -399,6 +400,7 @@ function CustomerDetailPage({ customerId, session, onBack }) {
     { label: 'Phone', value: customer.phone || 'Not added yet', icon: Smartphone },
     { label: 'Gender', value: customer.gender ? customer.gender.charAt(0).toUpperCase() + customer.gender.slice(1) : 'Not added yet', icon: Users },
     { label: 'Date of birth', value: customer.date_of_birth ? formatCustomerDate(`${customer.date_of_birth}T00:00:00`) : 'Not added yet', icon: Cake },
+    { label: 'Nationality', value: customer.nationality || 'Not added yet', icon: Globe2 },
     { label: 'Sign-in provider', value: customer.provider || 'Email', icon: KeyRound },
   ];
 
