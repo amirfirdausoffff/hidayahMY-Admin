@@ -8,6 +8,7 @@ import {
   Plus, Trash2, Upload, Search, Check, X, Play,
   CalendarDays, Tag, Edit3, ToggleLeft, ToggleRight, AlertTriangle, Ban, Eye,
   BookOpen, Filter, ChevronLeft, Construction, CheckSquare, GraduationCap,
+  MoreHorizontal, ArrowLeft, Mail, Cake, Smartphone, Clock3, UserRound, KeyRound,
 } from 'lucide-react';
 
 const API_URL = 'https://api.hidayahmy.com';
@@ -351,6 +352,130 @@ function DashboardPage({ session, showToast }) {
 }
 
 // ─── Customers ───
+function formatCustomerDate(value, includeTime = false) {
+  if (!value) return 'Not available';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'Not available';
+  return new Intl.DateTimeFormat('en-MY', {
+    day: '2-digit', month: 'short', year: 'numeric',
+    ...(includeTime ? { hour: '2-digit', minute: '2-digit' } : {}),
+  }).format(date);
+}
+
+function CustomerDetailPage({ customerId, session, onBack }) {
+  const [customer, setCustomer] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    apiFetch(`/api/admin/customers/${customerId}`, session)
+      .then((data) => {
+        if (!active) return;
+        if (data.success) setCustomer(data.customer);
+        else setError(data.error || 'Unable to load customer');
+      })
+      .catch(() => { if (active) setError('Unable to load customer'); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [customerId, session]);
+
+  if (loading) return <div className="flex justify-center py-20 text-gray-400">Loading customer profile...</div>;
+
+  if (error || !customer) {
+    return (
+      <div className="space-y-4">
+        <button onClick={onBack} className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900"><ArrowLeft size={16} /> Back to customers</button>
+        <div className="bg-red-50 border border-red-100 text-red-600 rounded-xl p-5 text-sm">{error || 'Customer not found'}</div>
+      </div>
+    );
+  }
+
+  const initials = (customer.name || customer.email || 'U').trim().charAt(0).toUpperCase();
+  const profileItems = [
+    { label: 'Full name', value: customer.name || 'Not added yet', icon: UserRound },
+    { label: 'Email', value: customer.email || 'Not available', icon: Mail },
+    { label: 'Phone', value: customer.phone || 'Not added yet', icon: Smartphone },
+    { label: 'Gender', value: customer.gender ? customer.gender.charAt(0).toUpperCase() + customer.gender.slice(1) : 'Not added yet', icon: Users },
+    { label: 'Date of birth', value: customer.date_of_birth ? formatCustomerDate(`${customer.date_of_birth}T00:00:00`) : 'Not added yet', icon: Cake },
+    { label: 'Sign-in provider', value: customer.provider || 'Email', icon: KeyRound },
+  ];
+
+  return (
+    <div className="space-y-5">
+      <button onClick={onBack} className="inline-flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-gray-900 transition">
+        <ArrowLeft size={16} /> Back to customers
+      </button>
+
+      <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+        <div className="h-24 bg-gradient-to-r from-slate-900 via-slate-800 to-blue-900" />
+        <div className="px-6 pb-6">
+          <div className="flex flex-col sm:flex-row sm:items-end gap-4 -mt-10">
+            <div className="w-20 h-20 rounded-2xl bg-white border-4 border-white shadow-md overflow-hidden flex items-center justify-center">
+              {customer.avatar_url
+                ? <img src={customer.avatar_url} alt="" className="w-full h-full object-cover" />
+                : <span className="w-full h-full bg-blue-50 text-blue-700 flex items-center justify-center text-2xl font-bold">{initials}</span>}
+            </div>
+            <div className="pb-1 min-w-0">
+              <h2 className="text-xl font-bold text-gray-900 truncate">{customer.name || 'Unnamed customer'}</h2>
+              <p className="text-sm text-gray-500 truncate">{customer.email}</p>
+            </div>
+            <div className="sm:ml-auto pb-1 flex flex-wrap gap-2">
+              {(customer.platforms || []).map((platform) => (
+                <span key={platform} className={`text-xs font-medium px-2.5 py-1 rounded-full ${platform === 'ios' ? 'bg-sky-50 text-sky-700' : 'bg-emerald-50 text-emerald-700'}`}>
+                  {platform === 'ios' ? 'iOS' : 'Android'}
+                </span>
+              ))}
+              {!customer.platforms?.length && <span className="text-xs text-gray-400 bg-gray-50 px-2.5 py-1 rounded-full">Device not detected</span>}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
+        <div className="xl:col-span-2 bg-white rounded-2xl border border-gray-100 p-6">
+          <h3 className="text-sm font-semibold text-gray-900 mb-5">Profile information</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {profileItems.map(({ label, value, icon: Icon }) => (
+              <div key={label} className="flex items-start gap-3 rounded-xl bg-gray-50/80 p-4">
+                <div className="w-9 h-9 rounded-lg bg-white border border-gray-100 flex items-center justify-center text-gray-400 shrink-0"><Icon size={17} /></div>
+                <div className="min-w-0">
+                  <p className="text-[11px] uppercase tracking-wide font-semibold text-gray-400">{label}</p>
+                  <p className="text-sm font-medium text-gray-800 mt-1 break-words">{value}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-gray-100 p-6">
+          <h3 className="text-sm font-semibold text-gray-900 mb-5">Account activity</h3>
+          <div className="space-y-5">
+            {[
+              ['Joined', formatCustomerDate(customer.created_at, true)],
+              ['Last sign in', formatCustomerDate(customer.last_sign_in_at, true)],
+              ['Profile updated', formatCustomerDate(customer.updated_at, true)],
+              ['Email status', customer.email_confirmed_at ? 'Verified' : 'Not verified'],
+            ].map(([label, value], index) => (
+              <div key={label} className="flex gap-3">
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${index === 3 && customer.email_confirmed_at ? 'bg-emerald-50 text-emerald-600' : 'bg-gray-50 text-gray-400'}`}>
+                  {index === 1 ? <Clock3 size={15} /> : index === 3 ? <Check size={15} /> : <CalendarDays size={15} />}
+                </div>
+                <div><p className="text-xs text-gray-400">{label}</p><p className="text-sm font-medium text-gray-700 mt-0.5">{value}</p></div>
+              </div>
+            ))}
+          </div>
+          <div className="mt-6 pt-5 border-t border-gray-100">
+            <p className="text-[11px] uppercase tracking-wide font-semibold text-gray-400">Customer ID</p>
+            <p className="text-xs font-mono text-gray-500 break-all mt-1.5">{customer.id}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function CustomersPage({ session, showToast }) {
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -360,6 +485,8 @@ function CustomersPage({ session, showToast }) {
   const [adminPassword, setAdminPassword] = useState('');
   const [deleteError, setDeleteError] = useState('');
   const [deleting, setDeleting] = useState(false);
+  const [actionCustomerId, setActionCustomerId] = useState(null);
+  const [viewCustomerId, setViewCustomerId] = useState(null);
 
   const loadCustomers = useCallback(() => {
     apiFetch('/api/admin/list-users?role=customer', session)
@@ -397,6 +524,10 @@ function CustomersPage({ session, showToast }) {
     ? customers.filter((u) => (u.name || '').toLowerCase().includes(search.toLowerCase()) || (u.email || '').toLowerCase().includes(search.toLowerCase()))
     : customers;
   const paged = paginate(filtered, page);
+
+  if (viewCustomerId) {
+    return <CustomerDetailPage customerId={viewCustomerId} session={session} onBack={() => setViewCustomerId(null)} />;
+  }
 
   return (
     <div className="bg-white rounded-xl border border-gray-100">
@@ -481,11 +612,27 @@ function CustomersPage({ session, showToast }) {
                   </td>
                   <td className="px-5 py-3 text-sm text-gray-400">{new Date(u.created_at).toLocaleDateString()}</td>
                   <td className="px-5 py-3 text-right">
-                    <button
-                      onClick={() => { setDeleteTarget(u); setAdminPassword(''); setDeleteError(''); }}
-                      className="text-gray-300 hover:text-red-500 transition"
-                      title="Delete customer"
-                    ><Trash2 size={14} /></button>
+                    <div className="inline-flex items-center justify-end gap-1">
+                      {actionCustomerId === u.id && (
+                        <div className="inline-flex items-center gap-1 mr-1">
+                          <button
+                            onClick={() => { setViewCustomerId(u.id); setActionCustomerId(null); }}
+                            className="px-2.5 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition"
+                          >View</button>
+                          <button
+                            onClick={() => { setDeleteTarget(u); setAdminPassword(''); setDeleteError(''); setActionCustomerId(null); }}
+                            className="px-2.5 py-1.5 text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition"
+                          >Delete</button>
+                        </div>
+                      )}
+                      <button
+                        onClick={() => setActionCustomerId(actionCustomerId === u.id ? null : u.id)}
+                        className={`p-1.5 rounded-lg transition ${actionCustomerId === u.id ? 'bg-gray-100 text-gray-700' : 'text-gray-300 hover:text-gray-600 hover:bg-gray-50'}`}
+                        title="Customer actions"
+                        aria-label="Customer actions"
+                        aria-expanded={actionCustomerId === u.id}
+                      ><MoreHorizontal size={16} /></button>
+                    </div>
                   </td>
                 </tr>
               ))}
