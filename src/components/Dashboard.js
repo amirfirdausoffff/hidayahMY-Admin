@@ -8,7 +8,7 @@ import {
   Plus, Trash2, Upload, Search, Check, X, Play,
   CalendarDays, Tag, Edit3, ToggleLeft, ToggleRight, AlertTriangle, Ban, Eye,
   BookOpen, Filter, ChevronLeft, Construction, CheckSquare, GraduationCap,
-  MoreHorizontal, ArrowLeft, Mail, Cake, Smartphone, Clock3, UserRound, KeyRound,
+  MoreVertical, ArrowLeft, Mail, Cake, Smartphone, Clock3, UserRound, KeyRound,
 } from 'lucide-react';
 
 const API_URL = 'https://api.hidayahmy.com';
@@ -409,19 +409,19 @@ function CustomerDetailPage({ customerId, session, onBack }) {
       </button>
 
       <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-        <div className="h-24 bg-gradient-to-r from-slate-900 via-slate-800 to-blue-900" />
+        <div className="h-28 bg-gradient-to-r from-slate-950 via-slate-800 to-blue-900" />
         <div className="px-6 pb-6">
-          <div className="flex flex-col sm:flex-row sm:items-end gap-4 -mt-10">
+          <div className="flex flex-col sm:flex-row sm:items-start gap-4 -mt-10">
             <div className="w-20 h-20 rounded-2xl bg-white border-4 border-white shadow-md overflow-hidden flex items-center justify-center">
               {customer.avatar_url
                 ? <img src={customer.avatar_url} alt="" className="w-full h-full object-cover" />
                 : <span className="w-full h-full bg-blue-50 text-blue-700 flex items-center justify-center text-2xl font-bold">{initials}</span>}
             </div>
-            <div className="pb-1 min-w-0">
+            <div className="pt-1 sm:pt-12 min-w-0">
               <h2 className="text-xl font-bold text-gray-900 truncate">{customer.name || 'Unnamed customer'}</h2>
               <p className="text-sm text-gray-500 truncate">{customer.email}</p>
             </div>
-            <div className="sm:ml-auto pb-1 flex flex-wrap gap-2">
+            <div className="sm:ml-auto sm:pt-12 flex flex-wrap gap-2">
               {(customer.platforms || []).map((platform) => (
                 <span key={platform} className={`text-xs font-medium px-2.5 py-1 rounded-full ${platform === 'ios' ? 'bg-sky-50 text-sky-700' : 'bg-emerald-50 text-emerald-700'}`}>
                   {platform === 'ios' ? 'iOS' : 'Android'}
@@ -485,7 +485,7 @@ function CustomersPage({ session, showToast }) {
   const [adminPassword, setAdminPassword] = useState('');
   const [deleteError, setDeleteError] = useState('');
   const [deleting, setDeleting] = useState(false);
-  const [actionCustomerId, setActionCustomerId] = useState(null);
+  const [actionMenu, setActionMenu] = useState(null);
   const [viewCustomerId, setViewCustomerId] = useState(null);
 
   const loadCustomers = useCallback(() => {
@@ -495,6 +495,19 @@ function CustomersPage({ session, showToast }) {
   }, [session]);
 
   useEffect(() => { loadCustomers(); }, [loadCustomers]);
+
+  useEffect(() => {
+    if (!actionMenu) return undefined;
+    const closeMenu = () => setActionMenu(null);
+    window.addEventListener('resize', closeMenu);
+    window.addEventListener('scroll', closeMenu, true);
+    document.addEventListener('click', closeMenu);
+    return () => {
+      window.removeEventListener('resize', closeMenu);
+      window.removeEventListener('scroll', closeMenu, true);
+      document.removeEventListener('click', closeMenu);
+    };
+  }, [actionMenu]);
 
   const handleDelete = async (e) => {
     e.preventDefault();
@@ -531,6 +544,34 @@ function CustomersPage({ session, showToast }) {
 
   return (
     <div className="bg-white rounded-xl border border-gray-100">
+      {actionMenu && (
+        <div
+          className="fixed z-50 w-44 overflow-hidden rounded-xl border border-gray-200 bg-white py-1.5 shadow-xl shadow-gray-900/10"
+          style={{ top: actionMenu.top, right: actionMenu.right }}
+          onClick={(event) => event.stopPropagation()}
+        >
+          <button
+            onClick={() => { setViewCustomerId(actionMenu.customer.id); setActionMenu(null); }}
+            className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm font-medium text-gray-700 hover:bg-gray-50 transition"
+          >
+            <Eye size={15} className="text-gray-500" />
+            View
+          </button>
+          <button
+            onClick={() => {
+              setDeleteTarget(actionMenu.customer);
+              setAdminPassword('');
+              setDeleteError('');
+              setActionMenu(null);
+            }}
+            className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm font-medium text-red-600 hover:bg-red-50 transition"
+          >
+            <Trash2 size={15} />
+            Delete
+          </button>
+        </div>
+      )}
+
       {/* Delete confirmation modal */}
       {deleteTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
@@ -591,7 +632,7 @@ function CustomersPage({ session, showToast }) {
               <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Provider</th>
               <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Device</th>
               <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Joined</th>
-              <th className="px-5 py-3"></th>
+              <th className="text-right px-5 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Action</th>
             </tr></thead>
             <tbody>
               {paged.map((u) => (
@@ -612,27 +653,21 @@ function CustomersPage({ session, showToast }) {
                   </td>
                   <td className="px-5 py-3 text-sm text-gray-400">{new Date(u.created_at).toLocaleDateString()}</td>
                   <td className="px-5 py-3 text-right">
-                    <div className="inline-flex items-center justify-end gap-1">
-                      {actionCustomerId === u.id && (
-                        <div className="inline-flex items-center gap-1 mr-1">
-                          <button
-                            onClick={() => { setViewCustomerId(u.id); setActionCustomerId(null); }}
-                            className="px-2.5 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition"
-                          >View</button>
-                          <button
-                            onClick={() => { setDeleteTarget(u); setAdminPassword(''); setDeleteError(''); setActionCustomerId(null); }}
-                            className="px-2.5 py-1.5 text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition"
-                          >Delete</button>
-                        </div>
-                      )}
-                      <button
-                        onClick={() => setActionCustomerId(actionCustomerId === u.id ? null : u.id)}
-                        className={`p-1.5 rounded-lg transition ${actionCustomerId === u.id ? 'bg-gray-100 text-gray-700' : 'text-gray-300 hover:text-gray-600 hover:bg-gray-50'}`}
-                        title="Customer actions"
-                        aria-label="Customer actions"
-                        aria-expanded={actionCustomerId === u.id}
-                      ><MoreHorizontal size={16} /></button>
-                    </div>
+                    <button
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        const rect = event.currentTarget.getBoundingClientRect();
+                        setActionMenu(actionMenu?.customer.id === u.id ? null : {
+                          customer: u,
+                          top: rect.bottom + 6,
+                          right: Math.max(12, window.innerWidth - rect.right),
+                        });
+                      }}
+                      className={`inline-flex h-8 w-8 items-center justify-center rounded-lg border transition ${actionMenu?.customer.id === u.id ? 'border-gray-900 bg-gray-900 text-white' : 'border-gray-200 text-gray-500 hover:border-gray-400 hover:text-gray-900'}`}
+                      title="Customer actions"
+                      aria-label="Customer actions"
+                      aria-expanded={actionMenu?.customer.id === u.id}
+                    ><MoreVertical size={15} /></button>
                   </td>
                 </tr>
               ))}
