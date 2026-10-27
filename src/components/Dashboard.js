@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { db } from '../lib/firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { supabase } from '../lib/supabase';
@@ -2605,6 +2605,23 @@ export default function Dashboard({ onLogout, session }) {
   const [toast, setToast] = useState(null);
   const PageComponent = pages[activePage];
 
+  // Supabase emits a new session object whenever it refreshes the access token,
+  // including when a background browser tab becomes active again. Passing that
+  // object directly made every page effect that depends on `session` reload its
+  // data and show a loading state. Keep the prop identity stable for the same
+  // signed-in user while exposing the latest token through getters.
+  const latestSessionRef = useRef(session);
+  latestSessionRef.current = session;
+  const sessionUserId = session?.user?.id;
+  const stableSession = useMemo(() => ({
+    get access_token() {
+      return latestSessionRef.current?.access_token;
+    },
+    get user() {
+      return latestSessionRef.current?.user;
+    },
+  }), [sessionUserId]);
+
   const showToast = (message, type = 'success') => setToast({ message, type });
 
   return (
@@ -2653,7 +2670,7 @@ export default function Dashboard({ onLogout, session }) {
       {/* Main content */}
       <main className="flex-1 ml-56 p-8">
         <h1 className="text-lg font-bold text-gray-900 mb-6">{pageLabels[activePage]}</h1>
-        <PageComponent session={session} showToast={showToast} />
+        <PageComponent session={stableSession} showToast={showToast} />
       </main>
     </div>
   );
